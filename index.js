@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const vendorRoutes = require('./routes/vendors');
@@ -43,6 +44,7 @@ app.use(cors({
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
+app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/auth', authRoutes);

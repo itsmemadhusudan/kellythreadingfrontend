@@ -22,9 +22,12 @@ const router = express.Router();
 
 router.use(protect);
 
+const DEFAULT_MEMBERSHIPS_LIMIT = 1000;
+const MAX_MEMBERSHIPS_LIMIT = 2000;
+
 router.get('/', async (req, res) => {
   try {
-    const { branchId, customerId, status } = req.query;
+    const { branchId, customerId, status, limit: limitParam } = req.query;
     const bid = getBranchId(req.user);
     const filter = {};
     if (req.user.role === 'admin') {
@@ -36,11 +39,13 @@ router.get('/', async (req, res) => {
     if (customerId) filter.customerId = customerId;
     if (status) filter.status = status;
 
+    const limit = limitParam ? Math.min(MAX_MEMBERSHIPS_LIMIT, Math.max(1, parseInt(limitParam, 10))) : DEFAULT_MEMBERSHIPS_LIMIT;
     const memberships = await Membership.find(filter)
       .populate('customerId', 'name phone email membershipCardId')
       .populate('membershipTypeId', 'name totalCredits')
       .populate('soldAtBranchId', 'name')
       .sort({ createdAt: -1 })
+      .limit(limit)
       .lean();
 
     res.json({
