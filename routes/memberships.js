@@ -77,9 +77,15 @@ router.post('/', async (req, res) => {
     const soldAt = req.user.role === 'admin' ? soldAtBranchId : (bid || soldAtBranchId);
     if (!soldAt) return res.status(400).json({ success: false, message: 'Branch is required.' });
 
-    const packagePrice = customerPackagePrice != null && customerPackagePrice !== '' ? Number(customerPackagePrice) : undefined;
+    const packageName = customerPackage && String(customerPackage).trim() ? String(customerPackage).trim() : null;
+    const rawPrice = customerPackagePrice != null && customerPackagePrice !== '' ? Number(customerPackagePrice) : NaN;
+    if (!packageName)
+      return res.status(400).json({ success: false, message: 'Package is required. Select a package from the list.' });
+    if (Number.isNaN(rawPrice) || rawPrice < 0)
+      return res.status(400).json({ success: false, message: 'Package price is required and must be 0 or greater.' });
+
+    const packagePrice = rawPrice;
     const discount = discountAmount != null && discountAmount !== '' ? Math.max(0, Number(discountAmount)) : 0;
-    const packageName = customerPackage && String(customerPackage).trim() ? String(customerPackage).trim() : undefined;
     const typeId = membershipTypeId || await getDefaultMembershipTypeId();
     const membership = await Membership.create({
       customerId,
@@ -89,9 +95,9 @@ router.post('/', async (req, res) => {
       soldAtBranchId: soldAt,
       status: 'active',
       expiryDate: expiryDate ? new Date(expiryDate) : undefined,
-      packagePrice,
+      packagePrice: packagePrice,
       discountAmount: discount,
-      packageName,
+      packageName: packageName,
     });
 
     const effectivePrice = (packagePrice != null ? packagePrice : 0) - discount;
