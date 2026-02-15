@@ -6,6 +6,7 @@ const InternalSettlement = require('../models/InternalSettlement');
 const Settings = require('../models/Settings');
 const AuditLog = require('../models/AuditLog');
 const Customer = require('../models/Customer');
+const Branch = require('../models/Branch');
 const { protect, authorize } = require('../middleware/auth');
 const { getBranchId } = require('../middleware/branchFilter');
 
@@ -131,6 +132,77 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message || 'Failed to create membership.' });
+  }
+});
+
+/** POST /api/memberships/import - bulk import from CSV-style rows. Branch from file is resolved by name. */
+router.post('/import', async (req, res) => {
+  try {
+    const { rows } = req.body;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'rows array is required and must not be empty.' });
+    }
+    const bid = getBranchId(req.user);
+    const branches = await Branch.find({ isActive: true }).lean();
+    const branchByName = {};
+    branches.forEach((b) => { branchByName[b.name.trim().toLowerCase()] = b._id; });
+    const defaultTypeId = await getDefaultMembershipTypeId();
+    let imported = 0;
+    let createdCustomers = 0;
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const customerName = (row.customerName || row.customer || '').toString().trim();
+      const customerPhone = (row.customerPhone || row.phone || '').toString().trim();
+      const customerEmail = (row.customerEmail || row.email || '').toString().trim();
+      const totalCredits = parseInt(row.totalCredits, 10);
+      const soldAtBranchName = (row.soldAtBranch || row.soldAt || row.branch || '').toString().trim();
+      if (!customerName || !customerPhone) {
+        errors.push({ row: i + 1, message: 'Customer name and phone are required.' });
+        continue;
+      }
+      if (!totalCredits || totalCredits < 1) {
+        errors.push({ row: i + 1, message: 'Total credits must be at least 1.' });
+        continue;
+      }
+      const branchId = soldAtBranchName ? branchByName[soldAtBranchName.toLowerCase()] : null;
+      if (!branchId) {
+        errors.push({ row: i + 1, message: `Branch "${soldAtBranchName || '(empty)'}" not found. Use exact branch name from Branches.` });
+        continue;
+      }
+      if (req.user.role === 'vendor' && bid && String(branchId) !== String(bid)) {
+        errors.push({ row: i + 1, message: 'You can only import for your own branch.' });
+        continue;
+      }
+      let customer = await Customer.findOne({ phone: customerPhone }).lean();
+      if (!customer) {
+        const created = await Customer.create({ name: customerName, phone: customerPhone, email: customerEmail || undefined });
+        customer = { _id: created._id, name: created.name, phone: created.phone, email: created.email };
+        createdCustomers++;
+      }
+      const purchaseDate = row.purchaseDate ? new Date(row.purchaseDate) : new Date();
+      const expiryDate = row.expiryDate ? new Date(row.expiryDate) : undefined;
+      const packagePrice = row.packagePrice != null && row.packagePrice !== '' ? Number(row.packagePrice) : undefined;
+      const discountAmount = row.discountAmount != null && row.discountAmount !== '' ? Math.max(0, Number(row.discountAmount)) : 0;
+      const customerPackage = (row.customerPackage || row.packageName || '').toString().trim() || undefined;
+      await Membership.create({
+        customerId: customer._id,
+        membershipTypeId: defaultTypeId,
+        totalCredits,
+        usedCredits: 0,
+        soldAtBranchId: branchId,
+        status: 'active',
+        purchaseDate,
+        expiryDate: expiryDate || undefined,
+        packagePrice,
+        discountAmount,
+        packageName: customerPackage,
+      });
+      imported++;
+    }
+    res.json({ success: true, imported, createdCustomers, errors });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message || 'Failed to import memberships.' });
   }
 });
 
