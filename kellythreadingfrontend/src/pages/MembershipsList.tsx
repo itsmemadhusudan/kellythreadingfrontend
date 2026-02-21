@@ -4,7 +4,7 @@ import { getCustomers } from '../api/customers';
 import { getBranches } from '../api/branches';
 import { getPackages } from '../api/packages';
 import { useAuth } from '../auth/hooks/useAuth';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../utils/money';
 import type { Membership, Branch } from '../types/crm';
 import type { Customer } from '../types/common';
@@ -19,6 +19,8 @@ export default function MembershipsList() {
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [branchId, setBranchId] = useState(searchParams.get('branchId') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -27,9 +29,11 @@ export default function MembershipsList() {
   const [createCustomerId, setCreateCustomerId] = useState('');
   const [createTotalCredits, setCreateTotalCredits] = useState('');
   const [createSoldAtBranchId, setCreateSoldAtBranchId] = useState('');
+  const [createExpiryDate, setCreateExpiryDate] = useState('');
   const [createPackageId, setCreatePackageId] = useState('');
   const [createPackagePrice, setCreatePackagePrice] = useState('');
   const [createDiscountAmount, setCreateDiscountAmount] = useState('');
+  const [createPackageExpiry, setCreatePackageExpiry] = useState('');
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; createdCustomers: number; errors: { row: number; message: string }[] } | null>(null);
@@ -39,11 +43,9 @@ export default function MembershipsList() {
 
   const selectedPackage = useMemo(() => packages.find((p) => p.id === createPackageId), [packages, createPackageId]);
 
-  const navigate = useNavigate();
-
   const { filteredMemberships, totalFiltered, totalPages, currentPage, paginatedMemberships } = useMemo(() => {
     const searchLower = searchQuery.trim().toLowerCase();
-    const filtered = searchLower
+    const filteredBySearch = searchLower
       ? memberships.filter((m) => {
           const customerName = (m.customer?.name ?? '').toLowerCase();
           const customerPhone = (m.customer?.phone ?? '').toLowerCase();
@@ -51,16 +53,29 @@ export default function MembershipsList() {
           const typeName = (m.typeName ?? '').toLowerCase();
           const soldAt = (m.soldAtBranch ?? '').toLowerCase();
           const statusStr = (m.status ?? '').toLowerCase();
+          const purchaseDate = m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString().toLowerCase() : '';
+          const expiryDate = m.expiryDate ? new Date(m.expiryDate).toLocaleDateString().toLowerCase() : '';
           return (
             customerName.includes(searchLower) ||
             customerPhone.includes(searchLower) ||
             customerEmail.includes(searchLower) ||
             typeName.includes(searchLower) ||
             soldAt.includes(searchLower) ||
-            statusStr.includes(searchLower)
+            statusStr.includes(searchLower) ||
+            purchaseDate.includes(searchLower) ||
+            expiryDate.includes(searchLower)
           );
         })
       : memberships;
+    const filtered =
+      !dateFrom && !dateTo
+        ? filteredBySearch
+        : filteredBySearch.filter((m) => {
+            const p = m.purchaseDate ? new Date(m.purchaseDate).getTime() : 0;
+            if (dateFrom && p < new Date(dateFrom + 'T00:00:00').getTime()) return false;
+            if (dateTo && p > new Date(dateTo + 'T23:59:59').getTime()) return false;
+            return true;
+          });
     const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const current = Math.min(Math.max(1, page), pages);
@@ -72,11 +87,11 @@ export default function MembershipsList() {
       currentPage: current,
       paginatedMemberships: paginated,
     };
-  }, [memberships, searchQuery, page, PAGE_SIZE]);
+  }, [memberships, searchQuery, dateFrom, dateTo, page, PAGE_SIZE]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, branchId, status]);
+  }, [searchQuery, branchId, status, dateFrom, dateTo]);
 
   function escapeCsvCell(value: string | number): string {
     const s = String(value ?? '').replace(/"/g, '""');
@@ -84,7 +99,7 @@ export default function MembershipsList() {
   }
 
   function exportToCsv() {
-    const headers = ['Customer', 'Phone', 'Email', 'Total credits', 'Used', 'Remaining', 'Package price', 'Sold at', 'Status'];
+    const headers = ['Customer', 'Phone', 'Email', 'Total credits', 'Used', 'Remaining', 'Package price', 'Sold at', 'Purchase date', 'Expiry', 'Status'];
     const rows = filteredMemberships.map((m) => {
       const remaining = m.remainingCredits ?? m.totalCredits - m.usedCredits;
       const priceStr = m.packagePrice != null
@@ -101,6 +116,8 @@ export default function MembershipsList() {
         remaining,
         priceStr,
         m.soldAtBranch ?? '—',
+        m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString() : '—',
+        m.expiryDate ? new Date(m.expiryDate).toLocaleDateString() : '—',
         m.status ?? '—',
       ].map(escapeCsvCell);
     });
@@ -153,6 +170,8 @@ export default function MembershipsList() {
       const customerEmail = get(cells, 'Email') || get(cells, 'customerEmail');
       const totalCreditsRaw = get(cells, 'Total credits') || get(cells, 'totalCredits');
       const soldAtBranch = get(cells, 'Sold at') || get(cells, 'soldAtBranch') || get(cells, 'Branch');
+      const purchaseDate = get(cells, 'Purchase date') || get(cells, 'purchaseDate');
+      const expiryDate = get(cells, 'Expiry') || get(cells, 'expiryDate');
       let packagePrice: number | undefined;
       const priceStr = get(cells, 'Package price') || get(cells, 'packagePrice');
       if (priceStr && priceStr !== '—' && priceStr !== '-') {
@@ -167,6 +186,8 @@ export default function MembershipsList() {
         customerEmail: customerEmail.trim() || undefined,
         totalCredits: totalCredits || 1,
         soldAtBranch: soldAtBranch.trim(),
+        purchaseDate: purchaseDate.trim() || undefined,
+        expiryDate: expiryDate.trim() || undefined,
         packagePrice,
       });
     }
@@ -179,7 +200,7 @@ export default function MembershipsList() {
     const text = await file.text();
     const rows = csvToImportRows(text);
     if (rows.length === 0) {
-      setError('No valid rows to import. CSV must have a header row with Customer, Phone, Sold at, Total credits (and optionally Email, Package price).');
+      setError('No valid rows to import. CSV must have a header row with Customer, Phone, Sold at, Total credits (and optionally Email, Purchase date, Expiry, Package price).');
       return;
     }
     setImporting(true);
@@ -242,8 +263,10 @@ export default function MembershipsList() {
       customerId: createCustomerId,
       totalCredits: credits,
       soldAtBranchId: isAdmin ? createSoldAtBranchId || undefined : undefined,
+      expiryDate: createExpiryDate || undefined,
       customerPackage: selectedPackage.name,
       customerPackagePrice: pkgPrice,
+      customerPackageExpiry: createPackageExpiry || undefined,
       discountAmount: discount,
     });
     setCreateSubmitting(false);
@@ -251,27 +274,22 @@ export default function MembershipsList() {
       setShowCreateForm(false);
       setCreateCustomerId('');
       setCreateTotalCredits('');
+      setCreateExpiryDate('');
       setCreatePackageId('');
       setCreatePackagePrice('');
       setCreateDiscountAmount('');
+      setCreatePackageExpiry('');
       getMemberships({ branchId: branchId || undefined, status: status || undefined }).then((r) => r.success && 'memberships' in r && setMemberships((r as { memberships: Membership[] }).memberships));
     } else setError((res as { message?: string }).message || 'Failed to create membership');
   }
 
   return (
     <div className="dashboard-content memberships-page">
-      <header className="page-hero memberships-header-row">
-        <div>
-          <h1 className="page-hero-title">Memberships</h1>
-          <p className="page-hero-subtitle">Assign memberships to customers. Set package here. View list below.</p>
-        </div>
-        <button type="button" className="btn-primary" onClick={() => setShowCreateForm(!showCreateForm)}>
-          {showCreateForm ? 'Cancel' : 'Create new membership'}
-        </button>
+      <header className="page-hero">
+        <h1 className="page-hero-title">Memberships</h1>
+        <p className="page-hero-subtitle">Assign memberships to customers. Set package and expiry here. View list below.</p>
       </header>
 
-      <div className="memberships-main-wrap">
-      {error && !showCreateForm && <div className="auth-error vendors-error" style={{ marginBottom: '1rem' }}>{error}</div>}
       <section className="content-card memberships-search-card">
         <label className="memberships-search-label" htmlFor="memberships-search-input">
           Search memberships
@@ -281,12 +299,34 @@ export default function MembershipsList() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Customer name, phone, email, package, branch, status…"
+          placeholder="Customer name, phone, email, package, branch, status, date…"
           className="memberships-search-input"
           autoComplete="off"
-          aria-label="Search memberships by customer, phone, package, branch or status"
+          aria-label="Search memberships by customer, phone, package, branch, status or date"
         />
         <div className="memberships-search-meta">
+          <div className="memberships-date-filters">
+            <label className="memberships-date-label">
+              <span className="memberships-date-label-text">From</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="memberships-date-input"
+                aria-label="Filter from date (purchase date)"
+              />
+            </label>
+            <label className="memberships-date-label">
+              <span className="memberships-date-label-text">To</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="memberships-date-input"
+                aria-label="Filter to date (purchase date)"
+              />
+            </label>
+          </div>
           {isAdmin && (
             <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="memberships-filter-select" aria-label="Filter by branch">
               <option value="">All branches</option>
@@ -346,8 +386,13 @@ export default function MembershipsList() {
         )}
       </section>
 
-      {showCreateForm && (
-        <section className="content-card memberships-create-form-card">
+      <section className="content-card">
+        <h2 className="page-section-title" style={{ marginTop: 0 }}>Create new membership</h2>
+        <p className="page-hero-subtitle" style={{ marginBottom: '1rem' }}>Select a customer and set credits. Optionally set package and expiry for the customer.</p>
+        <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowCreateForm(!showCreateForm)}>
+          {showCreateForm ? 'Cancel' : 'Create new membership'}
+        </button>
+        {showCreateForm && (
           <form onSubmit={handleCreateMembership} className="auth-form" style={{ marginBottom: '1.5rem', maxWidth: '480px' }}>
             <label>
               <span>Customer</span>
@@ -373,6 +418,10 @@ export default function MembershipsList() {
                 </select>
               </label>
             )}
+            <label>
+              <span>Membership expiry date (optional)</span>
+              <input type="date" value={createExpiryDate} onChange={(e) => setCreateExpiryDate(e.target.value)} />
+            </label>
             <hr style={{ margin: '1rem 0', border: 'none', borderTop: '1px solid var(--theme-border)' }} />
             <p style={{ fontSize: '0.9rem', color: 'var(--theme-text)', marginBottom: '0.75rem' }}>Package (required)</p>
             <label>
@@ -405,21 +454,25 @@ export default function MembershipsList() {
                     Final price: {formatCurrency(Math.max(0, (createPackagePrice !== '' ? Number(createPackagePrice) : selectedPackage.price) - (createDiscountAmount !== '' ? Number(createDiscountAmount) : 0)))}
                   </p>
                 )}
+                <label>
+                  <span>Package expiry date</span>
+                  <input type="date" value={createPackageExpiry} onChange={(e) => setCreatePackageExpiry(e.target.value)} />
+                </label>
               </>
             )}
             <button type="submit" className="auth-submit" disabled={createSubmitting}>{createSubmitting ? 'Creating…' : 'Create membership'}</button>
           </form>
-          {error && <div className="auth-error vendors-error" style={{ marginTop: '1rem' }}>{error}</div>}
-        </section>
-      )}
-      <section className="content-card memberships-list-card">
+        )}
+        {error && <div className="auth-error vendors-error">{error}</div>}
+      </section>
+      <section className="content-card">
         <h2 className="page-section-title">Membership list</h2>
         {loading ? (
           <div className="vendors-loading"><div className="spinner" /><span>Loading...</span></div>
         ) : memberships.length === 0 ? (
           <p className="vendors-empty">No memberships found.</p>
         ) : filteredMemberships.length === 0 ? (
-          <p className="vendors-empty">No memberships match your search.</p>
+          <p className="vendors-empty">No memberships match your search or date filter.</p>
         ) : (
           <>
             <div className="data-table-wrap">
@@ -430,19 +483,15 @@ export default function MembershipsList() {
                     <th className="num">Total / Used / Remaining</th>
                     <th>Package price</th>
                     <th>Sold at</th>
+                    <th>Purchase date</th>
+                    <th>Expiry</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedMemberships.map((m) => (
-                  <tr
-                    key={m.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(`${basePath}/memberships/${m.id}`)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`${basePath}/memberships/${m.id}`); } }}
-                    style={{ cursor: 'pointer' }}
-                  >
+                  <tr key={m.id}>
                     <td><strong>{m.customer?.name || '—'}</strong> {m.customer?.phone && `(${m.customer.phone})`}</td>
                     <td className="num">{m.totalCredits} / {m.usedCredits} / {(m.remainingCredits ?? m.totalCredits - m.usedCredits)}</td>
                     <td className="num">
@@ -453,7 +502,10 @@ export default function MembershipsList() {
                         : '—'}
                     </td>
                     <td>{m.soldAtBranch || '—'}</td>
+                    <td>{m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString() : '—'}</td>
+                    <td>{m.expiryDate ? new Date(m.expiryDate).toLocaleDateString() : '—'}</td>
                     <td><span className={`status-badge status-${m.status === 'active' ? 'approved' : m.status === 'used' ? 'rejected' : 'pending'}`}>{m.status}</span></td>
+                    <td><Link to={`${basePath}/memberships/${m.id}`}>View / Use</Link></td>
                   </tr>
                   ))}
                 </tbody>
@@ -487,7 +539,6 @@ export default function MembershipsList() {
           </>
         )}
       </section>
-      </div>
     </div>
   );
 }

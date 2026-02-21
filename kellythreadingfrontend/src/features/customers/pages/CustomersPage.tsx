@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getCustomers, createCustomer } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
 import { useAuth } from '../../../auth/hooks/useAuth';
+import { formatCurrency } from '../../../utils/money';
 import type { Customer, Branch } from '../../../types/common';
 
 export default function CustomersPage() {
@@ -24,6 +25,12 @@ export default function CustomersPage() {
   const isAdmin = user?.role === 'admin';
   const PAGE_SIZE = 10;
   const basePath = isAdmin ? '/admin' : '/vendor';
+
+  const isPackageExpired = (expiry: string | undefined) => expiry && new Date(expiry) < new Date(new Date().setHours(0, 0, 0, 0));
+  const expiredCount = useMemo(
+    () => customers.filter((c) => c.customerPackage && isPackageExpired(c.customerPackageExpiry)).length,
+    [customers]
+  );
 
   const { filteredCustomers, totalFiltered, totalPages, currentPage, paginatedCustomers } = useMemo(() => {
     const selectedBranchName = branchFilterId ? branches.find((b) => b.id === branchFilterId)?.name : null;
@@ -108,14 +115,20 @@ export default function CustomersPage() {
   }
 
   function exportToCsv() {
-    const headers = ['Card ID', 'Name', 'Phone', 'Email', 'Branch'];
-    const rows = filteredCustomers.map((c) => [
-      c.membershipCardId ?? '—',
-      c.name ?? '—',
-      c.phone ?? '—',
-      c.email ?? '—',
-      c.primaryBranch ?? '—',
-    ].map(escapeCsvCell));
+    const headers = ['Card ID', 'Name', 'Phone', 'Email', ...(isAdmin ? ['Package', 'Price', 'Expiry'] : []), 'Branch'];
+    const rows = filteredCustomers.map((c) => {
+      const base = [
+        c.membershipCardId ?? '—',
+        c.name ?? '—',
+        c.phone ?? '—',
+        c.email ?? '—',
+      ];
+      if (isAdmin) {
+        base.push(c.customerPackage ?? '—', c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—', c.customerPackageExpiry ?? '—');
+      }
+      base.push(c.primaryBranch ?? '—');
+      return base.map(escapeCsvCell);
+    });
     const csv = [headers.map(escapeCsvCell).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -163,6 +176,11 @@ export default function CustomersPage() {
             <button type="submit" className="auth-submit">Create customer</button>
           </form>
         )}
+        {isAdmin && expiredCount > 0 && (
+          <div className="package-expired-alert" role="alert">
+            <strong>Package expired:</strong> {expiredCount} customer{expiredCount !== 1 ? 's have' : ' has'} a package that has expired. Please renew from Memberships.
+          </div>
+        )}
         {error && <div className="auth-error vendors-error">{error}</div>}
         {customers.length > 0 ? (
           <>
@@ -182,28 +200,17 @@ export default function CustomersPage() {
                   </select>
                 </label>
               )}
-              <div className="customers-search-wrap">
-                <label className="customers-search-label">
-                  <span>Search by Card ID, name, phone or email</span>
-                  <input
-                    type="search"
-                    className="customers-search-input"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                    aria-label="Search customers by card ID, name, phone or email"
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="customers-search-btn"
-                  onClick={() => {}}
-                  aria-label="Search"
-                >
-                  Search
-                </button>
-              </div>
+              <label className="customers-search-label">
+                <span>Search by Card ID, name, phone or email</span>
+                <input
+                  type="search"
+                  className="customers-search-input"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search customers by card ID, name, phone or email"
+                />
+              </label>
               <button
                 type="button"
                 className="customers-export-btn"
@@ -227,24 +234,41 @@ export default function CustomersPage() {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Email</th>
+                    {isAdmin && (
+                      <>
+                        <th>Package</th>
+                        <th>Price</th>
+                        <th>Expiry</th>
+                      </>
+                    )}
                     <th>Branch</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedCustomers.map((c) => (
-                      <tr key={c.id}>
+                  {paginatedCustomers.map((c) => {
+                    const expired = isAdmin && c.customerPackage && isPackageExpired(c.customerPackageExpiry);
+                    return (
+                      <tr key={c.id} className={expired ? 'package-expired-row' : ''}>
                         <td>{c.membershipCardId || '—'}</td>
                         <td><strong>{c.name}</strong></td>
                         <td>{c.phone}</td>
                         <td>{c.email || '—'}</td>
+                        {isAdmin && (
+                          <>
+                            <td>{c.customerPackage ? (expired ? <span>{c.customerPackage} <span className="status-badge status-expired">Expired</span></span> : c.customerPackage) : '—'}</td>
+                            <td>{c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—'}</td>
+                            <td>{c.customerPackageExpiry ? (expired ? <span className="text-expired">{c.customerPackageExpiry}</span> : c.customerPackageExpiry) : '—'}</td>
+                          </>
+                        )}
                         <td>{c.primaryBranch || '—'}</td>
                         <td>
                           <Link to={`${basePath}/customers/${c.id}`} className="filter-btn" style={{ marginRight: '0.5rem' }}>View</Link>
                           <button type="button" className="filter-btn" onClick={() => navigate(`${basePath}/customers/${c.id}?edit=1`)}>Edit</button>
                         </td>
                       </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

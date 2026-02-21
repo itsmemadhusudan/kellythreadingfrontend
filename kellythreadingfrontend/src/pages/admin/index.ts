@@ -1,6 +1,6 @@
 export { default as AdminDashboardPage } from './AdminDashboardPage';
 export { default as OwnerOverviewPage } from './OwnerOverviewPage';
-export { default as BranchPage } from './BranchPage';
+export { default as VendorsPage } from './VendorsPage';
 export { default as BranchesPage } from './BranchesPage';
 export { default as SalesPage } from './SalesPage';
 export { default as MembershipsPage } from './MembershipsPage';

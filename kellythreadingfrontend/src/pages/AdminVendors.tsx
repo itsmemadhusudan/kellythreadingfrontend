@@ -6,7 +6,7 @@ import type { Branch } from '../types/crm';
 
 type FilterStatus = 'all' | ApprovalStatus;
 
-export default function AdminBranch() {
+export default function AdminVendors() {
   const [vendors, setVendors] = useState<VendorListItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -36,7 +36,7 @@ export default function AdminBranch() {
     const res = await getVendors(status);
     setLoading(false);
     if (res.success && res.vendors) setVendors(res.vendors);
-    else setError(res.message || 'Failed to load branch');
+    else setError(res.message || 'Failed to load vendors');
   }
 
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function AdminBranch() {
       loadVendors();
       setSelectedVendor((prev) => prev && prev.id === selectedVendor.id ? { ...prev, ...res.vendor } : prev);
     } else {
-      setEditError(res.message || 'Failed to update branch');
+      setEditError(res.message || 'Failed to update vendor');
     }
   };
 
@@ -198,8 +198,8 @@ export default function AdminBranch() {
     <div className="dashboard-content">
       <section className="content-card">
         <div className="vendors-header">
-          <h2>Branch management</h2>
-          <p className="vendors-subtitle">Approve branch and assign each branch to a branch. Branch only see data for their assigned branch.</p>
+          <h2>Vendor management</h2>
+          <p className="vendors-subtitle">Approve vendors and assign each vendor to a branch. Vendors only see data for their assigned branch.</p>
         </div>
 
         <div className="vendors-filters">
@@ -238,10 +238,10 @@ export default function AdminBranch() {
         {loading ? (
           <div className="vendors-loading">
             <div className="spinner" />
-            <span>Loading branch...</span>
+            <span>Loading vendors...</span>
           </div>
         ) : vendors.length === 0 ? (
-          <p className="vendors-empty">No branch found.</p>
+          <p className="vendors-empty">No vendors found.</p>
         ) : (
           <div className="vendors-table-wrap">
             <table className="vendors-table">
@@ -278,7 +278,7 @@ export default function AdminBranch() {
                         disabled={assigningBranchId !== null}
                         className="vendor-branch-select"
                         aria-label={`Assign branch for ${v.name}`}
-                        title="Assign branch – branch will only see this branch"
+                        title="Assign branch – vendor will only see this branch"
                       >
                         <option value="">No branch assigned</option>
                         {branches.map((b) => (
@@ -365,7 +365,7 @@ export default function AdminBranch() {
             aria-labelledby="vendor-modal-title"
           >
             <div className="vendor-modal-header">
-              <h2 id="vendor-modal-title">Branch details</h2>
+              <h2 id="vendor-modal-title">Vendor details</h2>
               <button
                 type="button"
                 className="vendor-modal-close"
@@ -418,14 +418,14 @@ export default function AdminBranch() {
                     value={editBranchId}
                     onChange={(e) => setEditBranchId(e.target.value)}
                     className="appointment-form-input"
-                    aria-label="Assign branch to branch"
+                    aria-label="Assign branch to vendor"
                   >
                     <option value="">No branch assigned</option>
                     {branches.map((b) => (
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
-                  <span className="text-muted" style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem' }}>Branch will only see data for this branch.</span>
+                  <span className="text-muted" style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem' }}>Vendor will only see data for this branch.</span>
                 </label>
                 <div className="vendor-modal-actions">
                   <button type="button" className="filter-btn" onClick={() => setEditingVendor(false)}>Cancel</button>
@@ -466,7 +466,7 @@ export default function AdminBranch() {
                     className="filter-btn"
                     onClick={() => setEditingVendor(true)}
                   >
-                    Edit branch
+                    Edit vendor
                   </button>
                   {vendorDetail.approvalStatus === 'pending' && (
                     <>
@@ -510,7 +510,7 @@ export default function AdminBranch() {
                 </div>
               </>
             ) : (
-              <p className="vendors-empty">Could not load branch details.</p>
+              <p className="vendors-empty">Could not load vendor details.</p>
             )}
           </div>
         </div>

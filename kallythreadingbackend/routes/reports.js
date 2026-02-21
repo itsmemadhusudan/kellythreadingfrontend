@@ -173,7 +173,7 @@ router.get('/sales-dashboard', async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(breakdownLimit, 10) || 10));
     const skip = (page - 1) * limit;
 
-    const [memberships, allMembershipsForSales, activeMembershipCount, breakdownTotal, breakdownMemberships, settingsDoc, appointmentCounts, branches] = await Promise.all([
+    const [memberships, allMembershipsForSales, activeMembershipCount, breakdownTotal, breakdownMemberships, settingsDoc] = await Promise.all([
       Membership.find({
         ...branchFilter,
         purchaseDate: { $gte: fromDate, $lte: toDate },
@@ -192,16 +192,6 @@ router.get('/sales-dashboard', async (req, res) => {
         .limit(limit)
         .lean(),
       Settings.findOne().lean(),
-      (() => {
-        const apptMatch = { scheduledAt: { $gte: fromDate, $lte: toDate } };
-        if (req.user.role === 'admin' && branchId) apptMatch.branchId = new mongoose.Types.ObjectId(branchId);
-        else if (req.user.role === 'vendor' && bid) apptMatch.branchId = bid;
-        return Appointment.aggregate([
-          { $match: apptMatch },
-          { $group: { _id: '$branchId', count: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } } } },
-        ]);
-      })(),
-      Branch.find({ isActive: true }).lean(),
     ]);
 
     const revenuePercentage = settingsDoc?.revenuePercentage ?? 10;
@@ -225,41 +215,12 @@ router.get('/sales-dashboard', async (req, res) => {
     });
 
     const totalRevenue = totalSales * revenueMultiplier;
-    const apptByBranchId = {};
-    (appointmentCounts || []).forEach((a) => {
-      const id = a._id ? String(a._id) : null;
-      if (id) apptByBranchId[id] = { count: a.count || 0, completed: a.completed || 0 };
-    });
-    const branchIdToName = {};
-    branches.forEach((b) => { branchIdToName[b._id.toString()] = b.name; });
-    const byBranch = Object.entries(byBranchSales).map(([name, sales]) => {
-      const branchId = branches.find((b) => b.name === name)?._id?.toString();
-      const appt = branchId ? apptByBranchId[branchId] : null;
-      return {
-        branch: name,
-        branchId,
-        sales: sales,
-        revenue: sales * revenueMultiplier,
-        membershipCount: byBranchCount[name] || 0,
-        appointmentsThisMonth: appt?.count ?? 0,
-        completed: appt?.completed ?? 0,
-      };
-    });
-    // Include branches with appointments but no membership sales in date range
-    Object.entries(apptByBranchId).forEach(([bid, appt]) => {
-      const name = branchIdToName[bid];
-      if (name && !byBranchSales[name]) {
-        byBranch.push({
-          branch: name,
-          branchId: bid,
-          sales: 0,
-          revenue: 0,
-          membershipCount: 0,
-          appointmentsThisMonth: appt.count,
-          completed: appt.completed,
-        });
-      }
-    });
+    const byBranch = Object.entries(byBranchSales).map(([name, sales]) => ({
+      branch: name,
+      sales: sales,
+      revenue: sales * revenueMultiplier,
+      membershipCount: byBranchCount[name] || 0,
+    }));
     const byService = Object.entries(byServiceSales).map(([name, sales]) => ({
       serviceCategory: name,
       revenue: sales * revenueMultiplier,
@@ -274,27 +235,13 @@ router.get('/sales-dashboard', async (req, res) => {
       };
     });
 
-    // Daily sales: group membership sales by purchase date (for table + chart)
-    const dailyByDate = {};
-    memberships.forEach((m) => {
-      const d = m.purchaseDate ? new Date(m.purchaseDate) : null;
-      const key = d ? d.toISOString().slice(0, 10) : null;
-      if (key) {
-        dailyByDate[key] = (dailyByDate[key] || 0) + effectivePrice(m);
-      }
-    });
-    const dailySales = Object.entries(dailyByDate)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
+    const branches = await Branch.find({ isActive: true }).lean();
     res.json({
       success: true,
       from: fromDate,
       to: toDate,
       totalRevenue,
       totalSales,
-      membershipSales: totalSales,
-      dailySales,
       revenuePercentage,
       activeMembershipCount,
       breakdown,

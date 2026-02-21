@@ -212,7 +212,7 @@ export default function BranchesPage() {
               <h3>Delete branch?</h3>
               <button type="button" className="branch-modal-close" onClick={() => setDeletingBranchId(null)} aria-label="Close">×</button>
             </div>
-            <p className="branch-delete-message">This will deactivate the branch. You can no longer assign branch or new data to it.</p>
+            <p className="branch-delete-message">This will deactivate the branch. You can no longer assign vendors or new data to it.</p>
             <div className="branch-modal-footer">
               <button type="button" className="branch-action-btn branch-action-cancel" onClick={() => setDeletingBranchId(null)}>Cancel</button>
               <button type="button" className="branch-action-btn branch-action-delete-confirm" onClick={() => handleDelete(deletingBranchId)}>Delete</button>

@@ -40,7 +40,7 @@ export async function getMe(): Promise<{ success: boolean; user?: User; message?
   return { success: false, message: r.message };
 }
 
-/** Branch can assign themselves to a branch. */
+/** Vendors can assign themselves to a branch. */
 export async function updateMyBranch(branchId: string | null): Promise<{ success: boolean; user?: User; message?: string }> {
   const r = await http<{ user: User }>('/auth/me', {
     method: 'PATCH',

@@ -63,8 +63,6 @@ export interface Lead {
   source: string;
   branch?: string;
   branchId?: string;
-  service?: string;
-  serviceId?: string;
   status: string;
   followUps?: { note: string; at: string; byUserId?: string }[];
   followUpsCount?: number;
@@ -77,7 +75,6 @@ export interface Service {
   name: string;
   category?: string;
   branch?: string;
-  branchId?: string;
   durationMinutes?: number;
   price?: number;
 }
@@ -101,11 +98,6 @@ export interface SalesBreakdownRow {
   price: number;
 }
 
-export interface DailySalesRow {
-  date: string;
-  amount: number;
-}
-
 export interface SalesDashboard {
   from: string;
   to: string;
@@ -113,10 +105,6 @@ export interface SalesDashboard {
   totalSales?: number;
   revenuePercentage?: number;
   activeMembershipCount?: number;
-  membershipSales?: number;
-  dailySales?: DailySalesRow[];
-  /** Manually updated total for daily sales; if omitted, derived from sum of dailySales[].amount */
-  dailySalesTotal?: number;
   breakdown?: SalesBreakdownRow[];
   breakdownTotal?: number;
   breakdownPage?: number;

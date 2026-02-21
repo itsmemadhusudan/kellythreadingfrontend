@@ -61,7 +61,7 @@ export default function OwnerOverview() {
       </div>
       {overview.length === 0 && (
         <section className="content-card">
-          <p>No branches yet. Create branches and assign branch to see data here.</p>
+          <p>No branches yet. Create branches and assign vendors to see data here.</p>
         </section>
       )}
     </div>

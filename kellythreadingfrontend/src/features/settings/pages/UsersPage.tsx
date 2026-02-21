@@ -1,1 +1,1 @@
-export { default } from '../../../pages/AdminBranch';
+export { default } from '../../../pages/AdminVendors';

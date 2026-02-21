@@ -6,6 +6,7 @@ import { AuthBackgroundAnimation } from '../components/AuthBackgroundAnimation';
 import loginBgImage from '../../images/login.jpg';
 
 const BLOCKED_MESSAGE = 'Your account has been blocked. Contact admin.';
+const REMEMBERED_EMAIL_KEY = 'rememberedEmail';
 
 function IconUser() {
   return (
@@ -36,9 +37,22 @@ function IconUserCircle() {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    try {
+      const stored = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+      return stored || '';
+    } catch {
+      return '';
+    }
+  });
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => {
+    try {
+      return !!localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    } catch {
+      return false;
+    }
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, user } = useAuthStore();
@@ -64,6 +78,11 @@ export default function LoginPage() {
     const res = await login(email, password);
     setLoading(false);
     if (res.success && res.user) {
+      if (remember) {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
       const to = from || (res.user.role === 'admin' ? ROUTES.admin.root : ROUTES.vendor.root);
       navigate(to, { replace: true });
     } else setError(res.message || 'Login failed');

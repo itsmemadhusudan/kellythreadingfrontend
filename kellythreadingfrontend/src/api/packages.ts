@@ -4,7 +4,6 @@ export interface PackageItem {
   id: string;
   name: string;
   price: number;
-  settlementAmount?: number | null;
   isActive?: boolean;
 }
 
@@ -15,11 +14,11 @@ export async function getPackages(includeInactive = false): Promise<{ success: b
   return { success: false, message: (r as { message?: string }).message };
 }
 
-export async function createPackage(data: { name: string; price: number; settlementAmount?: number | null }) {
+export async function createPackage(data: { name: string; price: number }) {
   return apiRequest<{ package: PackageItem }>('/packages', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updatePackage(id: string, data: { name?: string; price?: number; settlementAmount?: number | null; isActive?: boolean }) {
+export async function updatePackage(id: string, data: { name?: string; price?: number; isActive?: boolean }) {
   return apiRequest<{ package: PackageItem }>(`/packages/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 

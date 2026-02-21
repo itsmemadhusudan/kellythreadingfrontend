@@ -9,11 +9,10 @@ export const ROUTES = {
   admin: {
     root: '/admin',
     overview: '/admin/overview',
-    branch: '/admin/branch',
+    vendors: '/admin/vendors',
     createVendor: '/admin/create-vendor',
     branches: '/admin/branches',
     sales: '/admin/sales',
-    salesDetails: '/admin/sales/details',
     memberships: '/admin/memberships',
     membershipDetail: (id: string) => `/admin/memberships/${id}`,
     customers: '/admin/customers',
@@ -27,9 +26,6 @@ export const ROUTES = {
     settlements: '/admin/settlements',
     loyalty: '/admin/loyalty',
     settings: '/admin/settings',
-    tickets: '/admin/tickets',
-    ticketDetail: (id: string) => `/admin/tickets/${id}`,
-    salesImages: '/admin/sales-images',
     profile: '/admin/profile',
   },
   vendor: {
@@ -47,9 +43,6 @@ export const ROUTES = {
     appointments: '/vendor/appointments',
     settlements: '/vendor/settlements',
     loyalty: '/vendor/loyalty',
-    tickets: '/vendor/tickets',
-    ticketDetail: (id: string) => `/vendor/tickets/${id}`,
-    salesImages: '/vendor/sales-images',
     profile: '/vendor/profile',
   },
 } as const;

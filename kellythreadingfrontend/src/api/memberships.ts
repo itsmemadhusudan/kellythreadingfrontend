@@ -46,6 +46,8 @@ export type ImportRow = {
   customerEmail?: string;
   totalCredits: number;
   soldAtBranch: string;
+  purchaseDate?: string;
+  expiryDate?: string;
   packagePrice?: number;
   discountAmount?: number;
   customerPackage?: string;

@@ -121,20 +121,20 @@ export default function AdminDashboardPage() {
   const totalLeads = overview.reduce((s, o) => s + (o.leads ?? 0), 0);
   const totalAppointments = overview.reduce((s, o) => s + (o.appointmentsThisMonth ?? 0), 0);
   const systemGrowthData = [
-    { name: 'Branch', value: totalVendors ?? 0, fill: 'var(--theme-link)' },
+    { name: 'Vendors', value: totalVendors ?? 0, fill: 'var(--theme-link)' },
     { name: 'Branches', value: totalBranches ?? 0, fill: '#8b5cf6' },
     { name: 'Active memberships', value: salesData?.activeMembershipCount ?? 0, fill: '#06b6d4' },
     { name: 'Total leads', value: totalLeads, fill: '#f59e0b' },
     { name: 'Appointments (month)', value: totalAppointments, fill: '#10b981' },
     { name: 'Pending approvals', value: pendingVendors ?? 0, fill: '#ef4444' },
-  ].filter((d) => d.value > 0 || d.name === 'Branch' || d.name === 'Branches');
+  ].filter((d) => d.value > 0 || d.name === 'Vendors' || d.name === 'Branches');
 
   return (
     <div className="dashboard-content admin-dashboard">
       <header className="admin-dashboard-hero">
         <div className="admin-dashboard-hero-inner">
           <h1 className="admin-dashboard-hero-title">Welcome back, {user?.name}</h1>
-          <p className="admin-dashboard-hero-subtitle">Overview of branch, branches, sales, and performance.</p>
+          <p className="admin-dashboard-hero-subtitle">Overview of vendors, branches, sales, and performance.</p>
         </div>
       </header>
 
@@ -145,8 +145,8 @@ export default function AdminDashboardPage() {
       <div className="admin-dashboard-kpis stats-grid">
         <div className="stat-card admin-kpi">
           <span className="stat-value">{loading ? '…' : formatNumber(totalVendors ?? 0)}</span>
-          <span className="stat-label">Total branch</span>
-          <Link to={ROUTES.admin.branch} className="stat-link">View →</Link>
+          <span className="stat-label">Total vendors</span>
+          <Link to={ROUTES.admin.vendors} className="stat-link">View →</Link>
         </div>
         <div className="stat-card admin-kpi">
           <span className="stat-value">{loading ? '…' : formatNumber(totalBranches ?? 0)}</span>
@@ -311,7 +311,7 @@ export default function AdminDashboardPage() {
       <section className="content-card admin-quick-actions">
         <h2 className="admin-dashboard-section-title" style={{ marginBottom: '1rem' }}>Quick actions</h2>
         <div className="admin-quick-actions-grid">
-          <Link to={ROUTES.admin.branch} className="admin-quick-action">Staff (assign branch)</Link>
+          <Link to={ROUTES.admin.vendors} className="admin-quick-action">Staff (assign branch)</Link>
           <Link to={ROUTES.admin.branches} className="admin-quick-action">Branches</Link>
           <Link to={ROUTES.admin.sales} className="admin-quick-action">Sales dashboard</Link>
           <Link to={ROUTES.admin.overview} className="admin-quick-action">All branches overview</Link>

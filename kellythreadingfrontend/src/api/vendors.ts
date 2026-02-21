@@ -1,7 +1,7 @@
 import { apiRequest } from './client';
 import type { VendorListItem } from '../types/auth';
 
-interface BranchResponse {
+interface VendorsResponse {
   success: boolean;
   vendors?: VendorListItem[];
   message?: string;
@@ -30,7 +30,7 @@ export async function createVendor(data: {
   return { success: false, message: (result as { message?: string }).message };
 }
 
-export async function getVendors(status?: 'pending' | 'approved' | 'rejected'): Promise<BranchResponse> {
+export async function getVendors(status?: 'pending' | 'approved' | 'rejected'): Promise<VendorsResponse> {
   const query = status ? `?status=${status}` : '';
   const result = await apiRequest<{ vendors: VendorListItem[] }>(`/vendors${query}`);
   if (result.success && 'vendors' in result) {

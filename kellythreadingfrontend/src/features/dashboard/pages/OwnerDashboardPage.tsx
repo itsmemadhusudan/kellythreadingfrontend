@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getOwnerOverview } from '../../../api/reports';
-import { ROUTES } from '../../../config/constants';
 import type { OwnerOverviewBranch } from '../../../types/common';
 import type { SettlementSummaryItem } from '../../../api/reports';
 
@@ -115,15 +113,46 @@ export default function OwnerDashboardPage() {
           </section>
         )}
 
-        {/* Link to Sales Dashboard for performance table */}
+        {/* Performance by branch – table */}
         <section className="owner-branches content-card">
-          <h2 className="owner-section-title">Branch performance</h2>
-          <p className="owner-section-desc">
-            View the performance by branch table (memberships sold, appointments, completed) with date and package filters on the Sales Dashboard.
-          </p>
-          <Link to={ROUTES.admin.sales} className="filter-btn" style={{ textDecoration: 'none' }}>
-            View Sales Dashboard
-          </Link>
+          <h2 className="owner-section-title">Performance by branch</h2>
+          {overview.length > 0 ? (
+            <div className="owner-performance-table-wrap">
+              <table className="owner-performance-table">
+                <thead>
+                  <tr>
+                    <th>Branch</th>
+                    <th className="owner-num">Memberships sold</th>
+                    <th className="owner-num">Leads</th>
+                    <th className="owner-num">Leads booked</th>
+                    <th className="owner-num">Lead conversion</th>
+                    <th className="owner-num">Appointments this month</th>
+                    <th className="owner-num">Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.map((b) => (
+                    <tr key={b.branchId}>
+                      <td className="owner-branch-cell">{b.branchName}</td>
+                      <td className="owner-num">{formatNumber(b.membershipsSold)}</td>
+                      <td className="owner-num">{formatNumber(b.leads)}</td>
+                      <td className="owner-num">{formatNumber(b.leadsBooked)}</td>
+                      <td className="owner-num">
+                        {b.leadConversion != null ? `${b.leadConversion}%` : '—'}
+                      </td>
+                      <td className="owner-num">{formatNumber(b.appointmentsThisMonth)}</td>
+                      <td className="owner-num">{formatNumber(b.appointmentsCompleted)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="owner-empty-inline">
+              <p className="owner-empty-title">No branches yet</p>
+              <p className="owner-empty-desc">Create branches and assign staff to see performance data here.</p>
+            </div>
+          )}
         </section>
       </div>
     </div>

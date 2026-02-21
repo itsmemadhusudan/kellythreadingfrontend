@@ -190,8 +190,6 @@ export default function LeadDetailPage() {
           <dd>{lead!.source}</dd>
           <dt>Branch</dt>
           <dd>{lead!.branch || '—'}</dd>
-          <dt>Service</dt>
-          <dd>{lead!.service || '—'}</dd>
           <dt>Created</dt>
           <dd>{lead!.createdAt ? new Date(lead!.createdAt).toLocaleString() : '—'}</dd>
           <dt>Status</dt>

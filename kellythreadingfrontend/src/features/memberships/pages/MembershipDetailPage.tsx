@@ -17,6 +17,7 @@ export default function MembershipDetailPage() {
   const [error, setError] = useState('');
   const [useCredits, setUseCredits] = useState(1);
   const [useNotes, setUseNotes] = useState('');
+  const [serviceDetails, setServiceDetails] = useState('');
   const [usedAtBranchId, setUsedAtBranchId] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(true);
@@ -26,6 +27,9 @@ export default function MembershipDetailPage() {
   const [renewCredits, setRenewCredits] = useState('');
   const [renewExpiry, setRenewExpiry] = useState('');
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
+  const isOtherBranchPackage = Boolean(
+    user?.branchId && membership?.soldAtBranchId && String(user.branchId) !== String(membership.soldAtBranchId)
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -73,9 +77,14 @@ export default function MembershipDetailPage() {
       setError(`Only ${remaining} credit(s) remaining.`);
       return;
     }
+    const isOtherBranch = Boolean(membership.soldAtBranchId && String(usedAtBranchId) !== String(membership.soldAtBranchId));
+    if (isOtherBranch && !serviceDetails.trim()) {
+      setError('Please enter service/visit details when using a package from another branch.');
+      return;
+    }
     setSubmitting(true);
     setError('');
-    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes.trim() || undefined, usedAtBranchId });
+    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes, serviceDetails: serviceDetails.trim() || undefined, usedAtBranchId });
     setSubmitting(false);
     if (res.success) {
       getMembership(id).then((r) => {
@@ -84,6 +93,7 @@ export default function MembershipDetailPage() {
           setUsageHistory(r.usageHistory || []);
           setUseCredits(1);
           setUseNotes('');
+          setServiceDetails('');
         }
       });
     } else setError((res as { message?: string }).message || 'Failed to record usage');
@@ -223,7 +233,10 @@ export default function MembershipDetailPage() {
         {canUse && (
           <div className="membership-use-section">
             <form onSubmit={handleUse} className="membership-use-form">
-              <h4 className="membership-use-title">Use credits</h4>
+              <h4 className="membership-use-title">{isOtherBranchPackage ? 'Record service (other branch)' : 'Use credits'}</h4>
+              {isOtherBranchPackage && (
+                <p className="membership-use-hint">Sold at <strong>{membership!.soldAtBranch}</strong>. Enter service details below.</p>
+              )}
               {error && <div className="auth-error">{error}</div>}
               <label>
                 <span>Branch (used at) <strong>*</strong></span>
@@ -244,6 +257,10 @@ export default function MembershipDetailPage() {
               <label>
                 <span>Credits to use</span>
                 <input type="number" min={1} max={remaining} value={useCredits} onChange={(e) => setUseCredits(Number(e.target.value))} />
+              </label>
+              <label>
+                <span>Service / visit details {isOtherBranchPackage ? '(required)' : '(optional)'}</span>
+                <textarea value={serviceDetails} onChange={(e) => setServiceDetails(e.target.value)} placeholder="e.g. service name, staff, date/time" rows={3} />
               </label>
               <label>
                 <span>Notes (optional)</span>
@@ -269,6 +286,7 @@ export default function MembershipDetailPage() {
                   <div className="membership-usage-body">
                     <span className="membership-usage-credits">{u.creditsUsed} credit{u.creditsUsed !== 1 ? 's' : ''} used</span>
                     {u.usedBy && <span className="membership-usage-by"> · {u.usedBy}</span>}
+                    {u.serviceDetails && <p className="membership-usage-details">{u.serviceDetails}</p>}
                     {u.notes && <p className="membership-usage-notes text-muted">{u.notes}</p>}
                   </div>
                 </div>
