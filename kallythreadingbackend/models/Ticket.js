@@ -5,6 +5,7 @@ const replySchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
     message: { type: String, required: true, trim: true },
+    imageBase64: { type: String },
   },
   { timestamps: true, _id: true }
 );
@@ -13,6 +14,7 @@ const ticketSchema = new mongoose.Schema(
   {
     subject: { type: String, required: true, trim: true },
     body: { type: String, required: true, trim: true },
+    imageBase64: { type: String },
     createdByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     createdByBranchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
     targetBranchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },

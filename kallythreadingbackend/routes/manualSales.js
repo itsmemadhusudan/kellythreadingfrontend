@@ -6,14 +6,16 @@ const { getBranchId } = require('../middleware/branchFilter');
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('admin'));
 
-/** GET /api/manual-sales?from=&to=&branchId= */
+/** GET /api/manual-sales?from=&to=&branchId= - Admin: all or filter. Vendor: own branch only. */
 router.get('/', async (req, res) => {
   try {
     const { from, to, branchId } = req.query;
+    const bid = getBranchId(req.user);
     const filter = {};
-    if (branchId) filter.branchId = branchId;
+    if (req.user.role === 'admin' && branchId) filter.branchId = branchId;
+    else if (req.user.role === 'vendor' && bid) filter.branchId = bid;
+    else if (req.user.role === 'vendor') filter.branchId = { $in: [] };
     if (from || to) {
       filter.date = {};
       if (from) filter.date.$gte = new Date(from);
@@ -50,6 +52,11 @@ router.get('/:id', async (req, res) => {
       .populate('branchId', 'name')
       .lean();
     if (!sale) return res.status(404).json({ success: false, message: 'Manual sale not found.' });
+    const bid = getBranchId(req.user);
+    const canAccess =
+      req.user.role === 'admin' ||
+      (bid && String(sale.branchId?._id ?? sale.branchId) === String(bid));
+    if (!canAccess) return res.status(404).json({ success: false, message: 'Manual sale not found.' });
     res.json({
       success: true,
       sale: {
@@ -66,15 +73,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-/** POST /api/manual-sales - create with optional base64 image */
+/** POST /api/manual-sales - create with optional base64 image. Admin: any branch. Vendor: own branch. */
 router.post('/', async (req, res) => {
   try {
     const { branchId, date, amount, imageBase64 } = req.body;
-    if (!branchId || !date || amount == null) {
-      return res.status(400).json({ success: false, message: 'Branch, date, and amount are required.' });
+    if (!date || amount == null) {
+      return res.status(400).json({ success: false, message: 'Date and number of sales are required.' });
+    }
+    const bid = getBranchId(req.user);
+    const targetBranchId = req.user.role === 'admin' ? (branchId || bid) : bid;
+    if (!targetBranchId) {
+      return res.status(400).json({ success: false, message: 'Branch is required.' });
     }
     const sale = await ManualSale.create({
-      branchId,
+      branchId: targetBranchId,
       date: new Date(date),
       amount: Number(amount),
       imageBase64: imageBase64 || undefined,
@@ -96,8 +108,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-/** DELETE /api/manual-sales/:id */
-router.delete('/:id', async (req, res) => {
+/** DELETE /api/manual-sales/:id - Admin only */
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const sale = await ManualSale.findByIdAndDelete(req.params.id);
     if (!sale) return res.status(404).json({ success: false, message: 'Manual sale not found.' });

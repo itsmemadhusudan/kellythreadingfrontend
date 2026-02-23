@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
         id: t._id,
         subject: t.subject,
         body: t.body,
+        hasImage: Boolean(t.imageBase64),
         createdBy: t.createdByUserId?.name,
         createdByBranch: t.createdByBranchId?.name,
         targetBranch: t.targetBranchId?.name,
@@ -51,7 +52,7 @@ router.get('/', async (req, res) => {
 /** POST /api/tickets - create ticket */
 router.post('/', async (req, res) => {
   try {
-    const { subject, body, targetBranchId } = req.body;
+    const { subject, body, targetBranchId, imageBase64 } = req.body;
     if (!subject || !String(subject).trim()) return res.status(400).json({ success: false, message: 'Subject is required.' });
     if (!body || !String(body).trim()) return res.status(400).json({ success: false, message: 'Message is required.' });
 
@@ -61,6 +62,7 @@ router.post('/', async (req, res) => {
     const ticket = await Ticket.create({
       subject: String(subject).trim(),
       body: String(body).trim(),
+      imageBase64: imageBase64 || undefined,
       createdByUserId: req.user._id,
       createdByBranchId: isAdmin ? undefined : bid,
       targetBranchId: isAdmin ? (targetBranchId || null) : null,
@@ -83,6 +85,8 @@ router.post('/', async (req, res) => {
         targetBranch: t.targetBranchId?.name,
         status: t.status,
         replyCount: 0,
+        hasImage: Boolean(t.imageBase64),
+        imageBase64: t.imageBase64,
         createdAt: t.createdAt,
       },
     });
@@ -120,6 +124,7 @@ router.get('/:id', async (req, res) => {
         id: ticket._id,
         subject: ticket.subject,
         body: ticket.body,
+        imageBase64: ticket.imageBase64,
         createdBy: ticket.createdByUserId?.name,
         createdByBranch: ticket.createdByBranchId?.name,
         targetBranch: ticket.targetBranchId?.name,
@@ -128,6 +133,7 @@ router.get('/:id', async (req, res) => {
         replies: (ticket.replies || []).map((r) => ({
           id: r._id,
           message: r.message,
+          imageBase64: r.imageBase64,
           userName: r.userId?.name,
           branchName: r.branchId?.name,
           createdAt: r.createdAt,
@@ -142,7 +148,7 @@ router.get('/:id', async (req, res) => {
 /** POST /api/tickets/:id/reply - add reply */
 router.post('/:id/reply', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, imageBase64 } = req.body;
     if (!message || !String(message).trim()) return res.status(400).json({ success: false, message: 'Message is required.' });
 
     const ticket = await Ticket.findById(req.params.id);
@@ -163,6 +169,7 @@ router.post('/:id/reply', async (req, res) => {
       userId: req.user._id,
       branchId: isAdmin ? undefined : bid,
       message: String(message).trim(),
+      imageBase64: imageBase64 || undefined,
     });
     await ticket.save();
 
@@ -188,6 +195,7 @@ router.post('/:id/reply', async (req, res) => {
         replies: (t.replies || []).map((r) => ({
           id: r._id,
           message: r.message,
+          imageBase64: r.imageBase64,
           userName: r.userId?.name,
           branchName: r.branchId?.name,
           createdAt: r.createdAt,
