@@ -1,5 +1,6 @@
 const express = require('express');
 const Membership = require('../models/Membership');
+const Package = require('../models/Package');
 const MembershipType = require('../models/MembershipType');
 const MembershipUsage = require('../models/MembershipUsage');
 const InternalSettlement = require('../models/InternalSettlement');
@@ -92,6 +93,9 @@ router.post('/', async (req, res) => {
     const packagePrice = rawPrice;
     const discount = discountAmount != null && discountAmount !== '' ? Math.max(0, Number(discountAmount)) : 0;
     const typeId = membershipTypeId || await getDefaultMembershipTypeId();
+    let settlementAmount;
+    const pkg = await Package.findOne({ name: packageName }).lean();
+    if (pkg?.settlementAmount != null) settlementAmount = Number(pkg.settlementAmount);
     const membership = await Membership.create({
       customerId,
       membershipTypeId: typeId,
@@ -103,6 +107,7 @@ router.post('/', async (req, res) => {
       packagePrice: packagePrice,
       discountAmount: discount,
       packageName: packageName,
+      settlementAmount: settlementAmount,
     });
 
     const effectivePrice = (packagePrice != null ? packagePrice : 0) - discount;
@@ -426,13 +431,18 @@ router.post('/:id/use', async (req, res) => {
 
     const soldAtBranchId = membership.soldAtBranchId._id || membership.soldAtBranchId;
     if (String(soldAtBranchId) !== String(usedAtBranchId)) {
-      const settingsDoc = await Settings.findOne().lean();
-      const settlementPercentage = settingsDoc?.settlementPercentage ?? 100;
-      const multiplier = settlementPercentage / 100;
-      const price = membership.membershipTypeId?.price != null ? Number(membership.membershipTypeId.price) : (membership.packagePrice != null ? Number(membership.packagePrice) : 0);
-      const totalCredits = membership.totalCredits || 1;
-      const baseAmount = totalCredits > 0 ? (price / totalCredits) * toUse : 0;
-      const amount = Math.round(baseAmount * multiplier * 100) / 100;
+      let amount;
+      if (membership.settlementAmount != null && membership.settlementAmount >= 0) {
+        amount = Math.round(Number(membership.settlementAmount) * toUse * 100) / 100;
+      } else {
+        const settingsDoc = await Settings.findOne().lean();
+        const settlementPercentage = settingsDoc?.settlementPercentage ?? 100;
+        const multiplier = settlementPercentage / 100;
+        const price = membership.membershipTypeId?.price != null ? Number(membership.membershipTypeId.price) : (membership.packagePrice != null ? Number(membership.packagePrice) : 0);
+        const totalCredits = membership.totalCredits || 1;
+        const baseAmount = totalCredits > 0 ? (price / totalCredits) * toUse : 0;
+        amount = Math.round(baseAmount * multiplier * 100) / 100;
+      }
       await InternalSettlement.create({
         fromBranchId: soldAtBranchId,
         toBranchId: usedAtBranchId,

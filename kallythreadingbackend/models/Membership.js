@@ -13,6 +13,8 @@ const membershipSchema = new mongoose.Schema(
     packagePrice: { type: Number },
     discountAmount: { type: Number, default: 0, min: 0 },
     packageName: { type: String },
+    /** Per-credit settlement amount when used at different branch. Overrides global percentage if set. */
+    settlementAmount: { type: Number, min: 0 },
   },
   { timestamps: true }
 );

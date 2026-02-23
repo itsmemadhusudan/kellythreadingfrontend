@@ -15,11 +15,10 @@ interface NavItem {
 
 const ownerNav: NavItem[] = [
   { to: ROUTES.admin.root, label: 'Dashboard', icon: '📊' },
-  { to: ROUTES.admin.overview, label: 'All branches overview', icon: '👁' },
+  { to: ROUTES.admin.sales, label: 'Sales dashboard', icon: '💰' },
   { to: ROUTES.admin.vendors, label: 'Staff (assign branch)', icon: '👤' },
   { to: ROUTES.admin.createVendor, label: 'Add new staff', icon: '➕' },
   { to: ROUTES.admin.branches, label: 'Branches', icon: '📍' },
-  { to: ROUTES.admin.sales, label: 'Sales', icon: '💰' },
   { to: ROUTES.admin.salesImages, label: 'Sales images', icon: '🖼️' },
   { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.admin.customers, label: 'Customers', icon: '👥' },

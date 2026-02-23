@@ -14,7 +14,6 @@ const ForgotPasswordPage = lazy(() => import('../auth/pages/ForgotPasswordPage')
 
 // Admin pages – lazy loaded
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((m) => ({ default: m.default })));
-const OwnerOverviewPage = lazy(() => import('../pages/admin/OwnerOverviewPage').then((m) => ({ default: m.default })));
 const AdminVendorsPage = lazy(() => import('../pages/admin/VendorsPage').then((m) => ({ default: m.default })));
 const AdminCreateVendorPage = lazy(() => import('../pages/admin/CreateVendorPage').then((m) => ({ default: m.default })));
 const AdminBranchesPage = lazy(() => import('../pages/admin/BranchesPage').then((m) => ({ default: m.default })));
@@ -79,7 +78,7 @@ export function AppRoutes() {
           }
         >
           <Route index element={<AdminDashboardPage />} />
-          <Route path="overview" element={<OwnerOverviewPage />} />
+          <Route path="overview" element={<Navigate to={ROUTES.admin.sales} replace />} />
           <Route path="vendors" element={<AdminVendorsPage />} />
           <Route path="create-vendor" element={<AdminCreateVendorPage />} />
           <Route path="branches" element={<AdminBranchesPage />} />
