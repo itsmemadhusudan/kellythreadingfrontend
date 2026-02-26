@@ -47,7 +47,7 @@ export default function SalesPage() {
   const [detailData, setDetailData] = useState<SalesDashboardType | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailBreakdownPage, setDetailBreakdownPage] = useState(1);
-  const [breakdownPage, setBreakdownPage] = useState(1);
+  const [breakdownPage] = useState(1);
 
   // Manual sales – dashboard level (for Total Sales calc) and branch details
   const [dashboardManualSales, setDashboardManualSales] = useState<ManualSale[]>([]);

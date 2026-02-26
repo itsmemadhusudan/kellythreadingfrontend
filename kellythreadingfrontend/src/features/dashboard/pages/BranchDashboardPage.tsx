@@ -158,7 +158,7 @@ export default function BranchDashboardPage() {
                           strokeOpacity={0.6}
                         />
                         <Tooltip
-                          formatter={(value: number) => [formatCurrency(value), 'Sales']}
+                          formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Sales']}
                           labelFormatter={(label) => new Date(label).toLocaleDateString()}
                         />
                         <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} />
