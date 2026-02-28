@@ -7269,6 +7269,8 @@
 
 .loyalty-detail-card {
   padding: 1.25rem 1.5rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .loyalty-detail-header {

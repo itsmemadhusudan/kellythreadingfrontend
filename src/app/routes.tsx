@@ -32,6 +32,7 @@ const AdminLeadDetailPage = lazy(() => import('../pages/admin/LeadDetailPage').t
 const AdminAppointmentsPage = lazy(() => import('../pages/admin/AppointmentsPage').then((m) => ({ default: m.default })));
 const AdminSettlementsPage = lazy(() => import('../pages/admin/SettlementsPage').then((m) => ({ default: m.default })));
 const AdminLoyaltyPage = lazy(() => import('../pages/admin/LoyaltyPage').then((m) => ({ default: m.default })));
+const AdminLoyaltyDetailPage = lazy(() => import('../pages/admin/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const AdminSettingsPage = lazy(() => import('../pages/admin/SettingsPage').then((m) => ({ default: m.default })));
 const AdminProfilePage = lazy(() => import('../pages/admin/ProfilePage').then((m) => ({ default: m.default })));
 const AdminTicketsPage = lazy(() => import('../pages/admin/TicketsPage').then((m) => ({ default: m.default })));
@@ -51,6 +52,7 @@ const VendorLeadDetailPage = lazy(() => import('../pages/vendor/LeadDetailPage')
 const VendorAppointmentsPage = lazy(() => import('../pages/vendor/AppointmentsPage').then((m) => ({ default: m.default })));
 const VendorSettlementsPage = lazy(() => import('../pages/vendor/SettlementsPage').then((m) => ({ default: m.default })));
 const VendorLoyaltyPage = lazy(() => import('../pages/vendor/LoyaltyPage').then((m) => ({ default: m.default })));
+const VendorLoyaltyDetailPage = lazy(() => import('../pages/vendor/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const VendorProfilePage = lazy(() => import('../pages/vendor/VendorProfilePage').then((m) => ({ default: m.default })));
 const VendorTicketsPage = lazy(() => import('../pages/vendor/TicketsPage').then((m) => ({ default: m.default })));
 const VendorTicketDetailPage = lazy(() => import('../pages/vendor/TicketDetailPage').then((m) => ({ default: m.default })));
@@ -97,6 +99,7 @@ export function AppRoutes() {
           <Route path="appointments" element={<AdminAppointmentsPage />} />
           <Route path="settlements" element={<AdminSettlementsPage />} />
           <Route path="loyalty" element={<AdminLoyaltyPage />} />
+          <Route path="loyalty/:id" element={<AdminLoyaltyDetailPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="profile" element={<AdminProfilePage />} />
           <Route path="tickets" element={<AdminTicketsPage />} />
@@ -129,6 +132,7 @@ export function AppRoutes() {
             <Route path="appointments" element={<VendorAppointmentsPage />} />
             <Route path="settlements" element={<VendorSettlementsPage />} />
             <Route path="loyalty" element={<VendorLoyaltyPage />} />
+            <Route path="loyalty/:id" element={<VendorLoyaltyDetailPage />} />
             <Route path="profile" element={<VendorProfilePage />} />
             <Route path="tickets" element={<VendorTicketsPage />} />
             <Route path="tickets/:id" element={<VendorTicketDetailPage />} />

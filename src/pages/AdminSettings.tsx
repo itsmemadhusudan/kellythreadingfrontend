@@ -6,8 +6,10 @@ import type { Service } from '../types/crm';
 
 export default function AdminSettings() {
   const [message, setMessage] = useState('');
+  const [revenuePercentage, setRevenuePercentage] = useState('');
   const [settlementPercentage, setSettlementPercentage] = useState('');
   const [membershipRenewalCost, setMembershipRenewalCost] = useState('');
+  const [revenueSaving, setRevenueSaving] = useState(false);
   const [settlementSaving, setSettlementSaving] = useState(false);
   const [renewalSaving, setRenewalSaving] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -32,6 +34,7 @@ export default function AdminSettings() {
     getSettings().then((r) => {
       setSettingsLoading(false);
       if (r.success && r.settings != null) {
+        setRevenuePercentage(String(r.settings.revenuePercentage ?? 10));
         setSettlementPercentage(String(r.settings.settlementPercentage ?? 100));
         setMembershipRenewalCost(String(r.settings.membershipRenewalCost ?? 0));
       }
@@ -121,6 +124,20 @@ export default function AdminSettings() {
     } else setMessage(r.message || 'Failed to remove service.');
   };
 
+  const handleSaveRevenuePercentage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(revenuePercentage);
+    if (Number.isNaN(num) || num < 0 || num > 100) {
+      setMessage('Revenue percentage must be between 0 and 100.');
+      return;
+    }
+    setRevenueSaving(true);
+    setMessage('');
+    const r = await updateSettings({ revenuePercentage: num });
+    setRevenueSaving(false);
+    setMessage(r.success ? 'Revenue percentage saved.' : r.message || 'Failed to save.');
+  };
+
   const handleSaveSettlementPercentage = async (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseFloat(settlementPercentage);
@@ -155,6 +172,35 @@ export default function AdminSettings() {
         <h2>Settings</h2>
         <p>System and role settings.</p>
         {message && <p className="text-muted" style={{ marginTop: '0.5rem' }}>{message}</p>}
+      </section>
+
+      <section className="content-card" style={{ marginTop: '1rem' }}>
+        <h3>Revenue percentage</h3>
+        <p className="text-muted">
+          Percentage of membership sales counted as revenue for reporting. This percentage is applied to total membership
+          sales when calculating revenue-based metrics.
+        </p>
+        {settingsLoading ? (
+          <p className="text-muted">Loading...</p>
+        ) : (
+          <form onSubmit={handleSaveRevenuePercentage} className="auth-form" style={{ maxWidth: '320px', marginTop: '0.5rem' }}>
+            <label>
+              <span>Revenue percentage (%)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={revenuePercentage}
+                onChange={(e) => setRevenuePercentage(e.target.value)}
+                placeholder="10"
+              />
+            </label>
+            <button type="submit" className="auth-submit" disabled={revenueSaving}>
+              {revenueSaving ? 'Saving...' : 'Save revenue percentage'}
+            </button>
+          </form>
+        )}
       </section>
 
       <section className="content-card" style={{ marginTop: '1rem' }}>
