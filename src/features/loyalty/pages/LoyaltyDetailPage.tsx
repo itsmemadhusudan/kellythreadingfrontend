@@ -15,7 +15,7 @@ export default function LoyaltyDetailPage() {
   const location = useLocation();
   const initialName = (location.state as { customerName?: string } | null)?.customerName;
 
-  const [customerName, setCustomerName] = useState(initialName ?? '');
+  const [customerName, _setCustomerName] = useState(initialName ?? '');
   const [points, setPoints] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<
     { id: string; points: number; type: string; reason?: string; createdAt: string }[]
