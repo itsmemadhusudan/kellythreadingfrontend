@@ -3,12 +3,14 @@ import { http } from './http';
 export interface SalesImageItem {
   id: string;
   title: string;
+  description: string;
   date: string;
   branchId: string;
   branchName: string;
   hasImage: boolean;
   salesCount: number;
   manualSalesCount: number | null;
+  salesAmount: number | null;
   createdAt: string;
 }
 
@@ -39,10 +41,12 @@ export async function getSalesImage(id: string): Promise<{
 
 export async function createSalesImage(data: {
   title: string;
+  description?: string;
   date: string;
   imageBase64: string;
   branchId?: string;
   manualSalesCount?: number | null;
+  salesAmount?: number | null;
 }): Promise<{
   success: boolean;
   image?: SalesImageItem;
@@ -58,14 +62,16 @@ export async function createSalesImage(data: {
 
 export async function updateSalesImage(
   id: string,
-  data: { manualSalesCount?: number | null }
+  data: { manualSalesCount?: number | null; description?: string; salesAmount?: number | null }
 ): Promise<{
   success: boolean;
   image?: SalesImageItem;
   message?: string;
 }> {
-  const body: { manualSalesCount?: number | null } = {};
+  const body: { manualSalesCount?: number | null; description?: string; salesAmount?: number | null } = {};
   if (data.manualSalesCount !== undefined) body.manualSalesCount = data.manualSalesCount;
+  if (data.description !== undefined) body.description = data.description;
+  if (data.salesAmount !== undefined) body.salesAmount = data.salesAmount;
   const r = await http<{ image: SalesImageItem }>(`/sales-images/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
