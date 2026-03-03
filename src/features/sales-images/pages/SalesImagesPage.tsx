@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getSalesImages, getSalesImage, createSalesImage, type SalesImageItem } from '../../../api/salesImages';
+import { getSalesImages, getSalesImage, createSalesImage, updateSalesImage, type SalesImageItem, type SalesImageDetail } from '../../../api/salesImages';
 import { getBranches } from '../../../api/branches';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import type { Branch } from '../../../types/common';
@@ -12,7 +12,10 @@ export default function SalesImagesPage() {
   const [error, setError] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [viewImage, setViewImage] = useState<string | null>(null);
+  const [viewDetail, setViewDetail] = useState<SalesImageDetail | null>(null);
+  const [manualCountInput, setManualCountInput] = useState<string>('');
+  const [savingCount, setSavingCount] = useState(false);
+  const [countError, setCountError] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDate, setUploadDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -31,7 +34,7 @@ export default function SalesImagesPage() {
     getSalesImages(isAdmin && branchFilter ? { branchId: branchFilter } : undefined)
       .then((r) => {
         setLoading(false);
-        if (r.success) setImages(r.images || []);
+        if (r.success) setImages((r.images || []).map((img) => ({ ...img, manualSalesCount: img.manualSalesCount ?? null })));
         else setError(r.message || 'Failed to load');
       })
       .catch(() => setLoading(false));
@@ -47,10 +50,39 @@ export default function SalesImagesPage() {
 
   async function handleView(id: string) {
     setViewingId(id);
-    setViewImage(null);
+    setViewDetail(null);
+    setCountError('');
     const r = await getSalesImage(id);
-    if (r.success && r.image?.imageBase64) setViewImage(r.image.imageBase64);
+    if (r.success && r.image) {
+      setViewDetail(r.image);
+      setManualCountInput(r.image.manualSalesCount != null ? String(r.image.manualSalesCount) : '');
+    }
     setViewingId(null);
+  }
+
+  function closeModal() {
+    setViewDetail(null);
+    setManualCountInput('');
+    setCountError('');
+  }
+
+  async function handleSaveManualCount() {
+    if (!viewDetail) return;
+    const val = manualCountInput.trim();
+    const num = val === '' ? null : parseInt(val, 10);
+    if (val !== '' && (Number.isNaN(num) || num < 0)) {
+      setCountError('Enter a non-negative number.');
+      return;
+    }
+    setCountError('');
+    setSavingCount(true);
+    const r = await updateSalesImage(viewDetail.id, { manualSalesCount: num });
+    setSavingCount(false);
+    if (r.success && r.image) {
+      setViewDetail({ ...viewDetail, ...r.image, imageBase64: viewDetail.imageBase64 });
+      setManualCountInput(r.image.manualSalesCount != null ? String(r.image.manualSalesCount) : '');
+      setImages((prev) => prev.map((img) => (img.id === viewDetail.id ? { ...img, ...r.image } : img)));
+    } else setCountError(r.message || 'Failed to save');
   }
 
   async function handleUpload(e: React.FormEvent) {
@@ -323,21 +355,61 @@ export default function SalesImagesPage() {
         </div>
       )}
 
-      {viewImage && (
+      {viewDetail && (
         <div
           className="sales-images-modal-overlay"
-          onClick={() => setViewImage(null)}
+          onClick={closeModal}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Escape' && setViewImage(null)}
+          onKeyDown={(e) => e.key === 'Escape' && closeModal()}
         >
-          <div className="sales-images-modal" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={viewImage.startsWith('data:') ? viewImage : `data:image/jpeg;base64,${viewImage}`}
-              alt="Sales receipt"
-              className="sales-images-modal-img"
-            />
-            <button type="button" className="sales-images-modal-close" onClick={() => setViewImage(null)} aria-label="Close">
+          <div className="sales-images-modal sales-images-modal-with-sidebar" onClick={(e) => e.stopPropagation()}>
+            <div className="sales-images-modal-main">
+              <img
+                src={viewDetail.imageBase64.startsWith('data:') ? viewDetail.imageBase64 : `data:image/jpeg;base64,${viewDetail.imageBase64}`}
+                alt="Sales receipt"
+                className="sales-images-modal-img"
+              />
+            </div>
+            <aside className="sales-images-modal-sidebar">
+              <div className="sales-images-sidebar-header">
+                <h3 className="sales-images-sidebar-title">{viewDetail.title}</h3>
+                <span className="sales-images-sidebar-date">
+                  {new Date(viewDetail.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {isAdmin && <span className="sales-images-sidebar-badge">{viewDetail.branchName}</span>}
+              </div>
+              <div className="sales-images-sidebar-stat">
+                <span className="sales-images-sidebar-count">{viewDetail.salesCount}</span>
+                <span className="sales-images-sidebar-count-label">sales {viewDetail.manualSalesCount != null ? '(manual)' : ''}</span>
+              </div>
+              <div className="sales-images-sidebar-edit">
+                <label htmlFor="sales-images-manual-count" className="sales-images-sidebar-label">
+                  Sales count (manual)
+                </label>
+                <p className="sales-images-sidebar-hint">Record how many sales for this day locally. Leave empty to use system count.</p>
+                <input
+                  id="sales-images-manual-count"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={manualCountInput}
+                  onChange={(e) => setManualCountInput(e.target.value)}
+                  placeholder="e.g. 12"
+                  className="sales-images-sidebar-input"
+                />
+                {countError && <div className="alert alert-error sales-images-sidebar-error">{countError}</div>}
+                <button
+                  type="button"
+                  className="btn-primary sales-images-sidebar-save"
+                  onClick={handleSaveManualCount}
+                  disabled={savingCount}
+                >
+                  {savingCount ? <span className="sales-images-loading-spinner" /> : 'Save count'}
+                </button>
+              </div>
+            </aside>
+            <button type="button" className="sales-images-modal-close" onClick={closeModal} aria-label="Close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />

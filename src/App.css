@@ -6555,6 +6555,135 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
 }
 
+.sales-images-modal-with-sidebar {
+  display: flex;
+  flex-direction: row;
+  max-width: min(95vw, 900px);
+  max-height: 90vh;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.sales-images-modal-with-sidebar .sales-images-modal-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sales-images-modal-with-sidebar .sales-images-modal-img {
+  max-height: 85vh;
+  width: auto;
+  object-fit: contain;
+}
+
+.sales-images-modal-sidebar {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-left: 1px solid var(--theme-border);
+  padding-left: 1rem;
+}
+
+.sales-images-sidebar-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sales-images-sidebar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--theme-text-heading);
+  width: 100%;
+}
+
+.sales-images-sidebar-date {
+  font-size: 0.875rem;
+  color: var(--theme-text-muted);
+}
+
+.sales-images-sidebar-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--theme-bg-muted);
+  border-radius: 6px;
+  color: var(--theme-text);
+}
+
+.sales-images-sidebar-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sales-images-sidebar-count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--theme-primary, #2563eb);
+}
+
+.sales-images-sidebar-count-label {
+  font-size: 0.8rem;
+  color: var(--theme-text-muted);
+}
+
+.sales-images-sidebar-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sales-images-sidebar-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--theme-text-heading);
+}
+
+.sales-images-sidebar-hint {
+  font-size: 0.75rem;
+  color: var(--theme-text-muted);
+  margin: 0;
+}
+
+.sales-images-sidebar-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+.sales-images-sidebar-input:focus {
+  outline: none;
+  border-color: var(--theme-primary, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.sales-images-sidebar-error {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.sales-images-sidebar-save {
+  align-self: flex-start;
+}
+
+.sales-images-sidebar-save .sales-images-loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+  vertical-align: middle;
+}
+
 .sales-images-modal-img {
   max-width: 100%;
   max-height: 85vh;

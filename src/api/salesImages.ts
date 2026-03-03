@@ -8,6 +8,7 @@ export interface SalesImageItem {
   branchName: string;
   hasImage: boolean;
   salesCount: number;
+  manualSalesCount: number | null;
   createdAt: string;
 }
 
@@ -41,6 +42,7 @@ export async function createSalesImage(data: {
   date: string;
   imageBase64: string;
   branchId?: string;
+  manualSalesCount?: number | null;
 }): Promise<{
   success: boolean;
   image?: SalesImageItem;
@@ -52,4 +54,22 @@ export async function createSalesImage(data: {
   });
   if (r.success && 'image' in r) return { success: true, image: r.image as SalesImageItem };
   return { success: false, message: r.message || 'Failed to upload' };
+}
+
+export async function updateSalesImage(
+  id: string,
+  data: { manualSalesCount?: number | null }
+): Promise<{
+  success: boolean;
+  image?: SalesImageItem;
+  message?: string;
+}> {
+  const body: { manualSalesCount?: number | null } = {};
+  if (data.manualSalesCount !== undefined) body.manualSalesCount = data.manualSalesCount;
+  const r = await http<{ image: SalesImageItem }>(`/sales-images/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+  if (r.success && 'image' in r) return { success: true, image: r.image as SalesImageItem };
+  return { success: false, message: r.message || 'Failed to update' };
 }
