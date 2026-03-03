@@ -70,7 +70,7 @@ export default function SalesImagesPage() {
     if (!viewDetail) return;
     const val = manualCountInput.trim();
     const num = val === '' ? null : parseInt(val, 10);
-    if (val !== '' && (Number.isNaN(num) || num < 0)) {
+    if (num !== null && (Number.isNaN(num) || num < 0)) {
       setCountError('Enter a non-negative number.');
       return;
     }
