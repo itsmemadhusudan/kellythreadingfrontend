@@ -15,11 +15,11 @@ interface SidebarProps {
 
 export function Sidebar({ title, navItems, open, onClose }: SidebarProps) {
   return (
-    <>
+    <div className="dashboard-sidebar-wrapper">
       <div className="sidebar-backdrop" onClick={onClose} aria-hidden />
       <aside className={`dashboard-sidebar ${open ? 'sidebar-open' : ''}`}>
         <nav className="sidebar-nav">
-          <div className="sidebar-brand">{title}</div>
+          <div className="sidebar-brand" title={title}>{title}</div>
           <ul>
             {navItems.map((item) => (
               <li key={item.to}>
@@ -30,13 +30,13 @@ export function Sidebar({ title, navItems, open, onClose }: SidebarProps) {
                   onClick={onClose}
                 >
                   {item.icon && <span className="nav-icon">{item.icon}</span>}
-                  {item.label}
+                  <span className="nav-label">{item.label}</span>
                 </NavLink>
               </li>
             ))}
           </ul>
         </nav>
       </aside>
-    </>
+    </div>
   );
 }
