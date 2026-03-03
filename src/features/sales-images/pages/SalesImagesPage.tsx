@@ -208,9 +208,9 @@ export default function SalesImagesPage() {
     <div className="dashboard-content sales-images-page">
       <header className="sales-images-hero">
         <div className="sales-images-hero-content">
-          <h1 className="sales-images-hero-title">Sales data</h1>
+          <h1 className="sales-images-hero-title">Sales Data</h1>
           <p className="sales-images-hero-subtitle">
-            Daily sales data. Records are kept for 7 days. The table shows the sales count and amount for each date.
+            Daily Sales Data. Records are kept for 7 days. The table shows the sales count and amount for each date.
           </p>
         </div>
         <div className="sales-images-hero-actions">
@@ -310,7 +310,7 @@ export default function SalesImagesPage() {
             <div>
               <h2 className="sales-images-upload-title">Upload sales receipt</h2>
               <p className="sales-images-upload-subtitle">
-                Add daily sales data (photo/receipt). Records are retained for 7 days and linked to sales counts.
+                Add daily Sales Data (photo/receipt). Records are retained for 7 days and linked to sales counts.
               </p>
             </div>
           </div>
@@ -455,7 +455,7 @@ export default function SalesImagesPage() {
       {loading ? (
         <div className="sales-images-loading">
           <span className="sales-images-loading-spinner" />
-          <span>Loading sales data…</span>
+          <span>Loading Sales Data…</span>
         </div>
       ) : images.length === 0 ? (
         <div className="sales-images-empty content-card">
@@ -466,7 +466,7 @@ export default function SalesImagesPage() {
               <polyline points="21 15 16 10 5 21" />
             </svg>
           </div>
-          <h3 className="sales-images-empty-title">No sales data yet</h3>
+          <h3 className="sales-images-empty-title">No Sales Data yet</h3>
           <p className="sales-images-empty-desc">Records are retained for 7 days. Upload your first receipt above.</p>
         </div>
       ) : filteredImages.length === 0 ? (

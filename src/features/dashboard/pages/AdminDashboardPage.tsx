@@ -341,7 +341,7 @@ export default function AdminDashboardPage() {
         </section>
         <section className="content-card admin-table-card">
           <div className="admin-table-header">
-            <h3>Branch sales data</h3>
+            <h3>Branch Sales Data</h3>
             <div className="admin-branch-sales-header">
               <select
                 value={selectedBranchId}
@@ -360,11 +360,11 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           {!selectedBranchId ? (
-            <p className="admin-chart-empty">Select a branch to view its sales receipts.</p>
+            <p className="admin-chart-empty">Select a branch to view its Sales Data.</p>
           ) : branchSalesLoading ? (
             <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
           ) : branchSalesImages.length === 0 ? (
-            <p className="admin-chart-empty">No sales data for this branch.</p>
+            <p className="admin-chart-empty">No Sales Data for this branch.</p>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table admin-table-clickable">

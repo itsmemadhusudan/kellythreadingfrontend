@@ -19,7 +19,7 @@ const ownerNav: NavItem[] = [
   { to: ROUTES.admin.vendors, label: 'Staff (assign branch)', icon: '👤' },
   { to: ROUTES.admin.createVendor, label: 'Add new staff', icon: '➕' },
   { to: ROUTES.admin.branches, label: 'Branches', icon: '📍' },
-  { to: ROUTES.admin.salesImages, label: 'Sales data', icon: '🖼️' },
+  { to: ROUTES.admin.salesImages, label: 'Sales Data', icon: '🖼️' },
   { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.admin.customers, label: 'Customers', icon: '👥' },
   { to: ROUTES.admin.packages, label: 'Packages', icon: '📦' },
@@ -35,7 +35,7 @@ const ownerNav: NavItem[] = [
 const branchNav: NavItem[] = [
   { to: ROUTES.vendor.root, label: 'Dashboard', icon: '📊' },
   { to: ROUTES.vendor.sales, label: 'Sales', icon: '💰' },
-  { to: ROUTES.vendor.salesImages, label: 'Sales data', icon: '🖼️' },
+  { to: ROUTES.vendor.salesImages, label: 'Sales Data', icon: '🖼️' },
   { to: ROUTES.vendor.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.vendor.customers, label: 'Customers', icon: '👥' },
   { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥' },
