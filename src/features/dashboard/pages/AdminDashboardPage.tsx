@@ -292,7 +292,7 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {settlements.slice(0, 5).map((s) => (
+                  {settlements.slice(0, 10).map((s) => (
                     <tr key={s.id}>
                       <td>{s.fromBranch} → {s.toBranch}</td>
                       <td>{formatCurrency(s.amount)}</td>

@@ -2899,15 +2899,9 @@
 
 .admin-dashboard-tables {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   margin-bottom: 1.75rem;
-}
-
-@media (max-width: 900px) {
-  .admin-dashboard-tables {
-    grid-template-columns: 1fr;
-  }
 }
 
 .admin-dashboard .admin-table-card {
