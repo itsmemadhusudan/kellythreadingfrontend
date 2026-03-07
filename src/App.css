@@ -6152,36 +6152,81 @@
   box-sizing: border-box;
 }
 
-/* Dark theme: ensure customer selection field is not transparent */
+/* Light theme: customer field – white background, black text */
+[data-theme="light"] .create-membership-customer-wrap input.create-membership-customer-input {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .create-membership-customer-wrap input.create-membership-customer-input::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .create-membership-customer-wrap input.create-membership-customer-input:focus {
+  background: #ffffff !important;
+  border-color: #6366f1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .create-membership-customer-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .create-membership-customer-dropdown .dropdown-item {
+  color: #000000 !important;
+  background: transparent !important;
+}
+
+[data-theme="light"] .create-membership-customer-dropdown .dropdown-item:hover {
+  background: #f1f5f9 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .create-membership-customer-empty {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .create-membership-clear-customer {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .create-membership-clear-customer:hover {
+  background: #475569 !important;
+  color: #ffffff !important;
+}
+
+/* Dark theme: customer field follows page theme */
 :not([data-theme="light"]) .create-membership-customer-wrap input.create-membership-customer-input {
-  background: #1e2230;
-  border-color: rgba(255, 255, 255, 0.15);
-  color: var(--theme-text-heading, #fff);
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
 }
 
-:not([data-theme="light"]) .create-membership-customer-wrap input.create-membership-customer-input:focus {
-  background: #252a3a;
+:not([data-theme="light"]) .create-membership-customer-wrap input.create-membership-customer-input::placeholder {
+  color: var(--theme-text-muted) !important;
 }
 
-/* Dark theme: ensure customer dropdown list has solid background */
 :not([data-theme="light"]) .create-membership-customer-dropdown {
-  background: #1e2230 !important;
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--theme-bg) !important;
+  border-color: var(--theme-border) !important;
 }
 
 :not([data-theme="light"]) .create-membership-customer-dropdown .dropdown-item {
-  background: transparent;
-  color: var(--theme-text-heading, #fff);
+  color: var(--theme-text) !important;
 }
 
 :not([data-theme="light"]) .create-membership-customer-dropdown .dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--theme-border) !important;
 }
 
 :not([data-theme="light"]) .create-membership-customer-empty {
-  color: var(--theme-text);
+  color: var(--theme-text-muted) !important;
 }
+
 .create-membership-clear-customer {
   position: absolute;
   top: 50%;
