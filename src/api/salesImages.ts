@@ -15,7 +15,8 @@ export interface SalesImageItem {
 }
 
 export interface SalesImageDetail extends SalesImageItem {
-  imageBase64: string;
+  /** Array of base64 image strings. Use imageBase64s[0] for backward compat with single-image views. */
+  imageBase64s: string[];
 }
 
 export async function getSalesImages(params?: { branchId?: string }): Promise<{
@@ -43,7 +44,7 @@ export async function createSalesImage(data: {
   title: string;
   description?: string;
   date: string;
-  imageBase64: string;
+  imageBase64s: string[];
   branchId?: string;
   manualSalesCount?: number | null;
   salesAmount?: number | null;

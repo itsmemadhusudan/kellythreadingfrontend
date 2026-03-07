@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { getMemberships, createMembership, importMemberships, type ImportRow } from '../api/memberships';
 import { getCustomers } from '../api/customers';
 import { getBranches } from '../api/branches';
@@ -24,9 +24,12 @@ export default function MembershipsList() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createCustomerId, setCreateCustomerId] = useState('');
-  const [createTotalCredits, setCreateTotalCredits] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(searchParams.get('customerId') ? true : false);
+  const [createCustomerId, setCreateCustomerId] = useState(searchParams.get('customerId') || '');
+  const [createCustomerSearch, setCreateCustomerSearch] = useState('');
+  const [createCustomerDropdownOpen, setCreateCustomerDropdownOpen] = useState(false);
+  const createCustomerInputRef = useRef<HTMLInputElement>(null);
+  const createCustomerDropdownRef = useRef<HTMLDivElement>(null);
   const [createSoldAtBranchId, setCreateSoldAtBranchId] = useState('');
   const [createPackageId, setCreatePackageId] = useState('');
   const [createPackagePrice, setCreatePackagePrice] = useState('');
@@ -39,6 +42,40 @@ export default function MembershipsList() {
   const PAGE_SIZE = 10;
 
   const selectedPackage = useMemo(() => packages.find((p) => p.id === createPackageId), [packages, createPackageId]);
+
+  const selectedCustomer = useMemo(() => customers.find((c) => c.id === createCustomerId), [customers, createCustomerId]);
+  const createCustomerSearchLower = createCustomerSearch.trim().toLowerCase();
+  const filteredCreateCustomers = useMemo(() => {
+    if (!createCustomerSearchLower) return customers;
+    return customers.filter((c) => {
+      const name = (c.name ?? '').toLowerCase();
+      const phone = (c.phone ?? '').toLowerCase();
+      const email = (c.email ?? '').toLowerCase();
+      const cardId = (c.membershipCardId ?? '').toLowerCase();
+      return (
+        name.includes(createCustomerSearchLower) ||
+        phone.includes(createCustomerSearchLower) ||
+        email.includes(createCustomerSearchLower) ||
+        cardId.includes(createCustomerSearchLower)
+      );
+    });
+  }, [customers, createCustomerSearchLower]);
+
+  useEffect(() => {
+    function handleClickOutside(ev: MouseEvent) {
+      const target = ev.target as Node;
+      if (
+        createCustomerDropdownRef.current &&
+        !createCustomerDropdownRef.current.contains(target) &&
+        createCustomerInputRef.current &&
+        !createCustomerInputRef.current.contains(target)
+      ) {
+        setCreateCustomerDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const { filteredMemberships, totalFiltered, totalPages, currentPage, paginatedMemberships } = useMemo(() => {
     const searchLower = searchQuery.trim().toLowerCase();
@@ -72,6 +109,14 @@ export default function MembershipsList() {
       paginatedMemberships: paginated,
     };
   }, [memberships, searchQuery, page, PAGE_SIZE]);
+
+  useEffect(() => {
+    const customerIdFromUrl = searchParams.get('customerId');
+    if (customerIdFromUrl) {
+      setShowCreateForm(true);
+      setCreateCustomerId(customerIdFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setPage(1);
@@ -217,15 +262,15 @@ export default function MembershipsList() {
   async function handleCreateMembership(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const credits = Number(createTotalCredits);
-    if (!createCustomerId || isNaN(credits) || credits < 1) {
-      setError('Customer and total credits are required.');
+    if (!createCustomerId) {
+      setError('Customer is required.');
       return;
     }
     if (!createPackageId || !selectedPackage) {
       setError('Package is required. Please select a package from the list.');
       return;
     }
+    const credits = selectedPackage.totalSessions ?? 1;
     const pkgPrice = createPackagePrice !== '' ? Number(createPackagePrice) : selectedPackage.price;
     if (Number.isNaN(pkgPrice) || pkgPrice < 0) {
       setError('Package price is required and must be 0 or greater.');
@@ -249,7 +294,7 @@ export default function MembershipsList() {
     if (res.success) {
       setShowCreateForm(false);
       setCreateCustomerId('');
-      setCreateTotalCredits('');
+      setCreateCustomerSearch('');
       setCreatePackageId('');
       setCreatePackagePrice('');
       setCreateDiscountAmount('');
@@ -274,16 +319,62 @@ export default function MembershipsList() {
           <form onSubmit={handleCreateMembership} className="auth-form" style={{ maxWidth: '480px' }}>
             <label>
               <span>Customer</span>
-              <select value={createCustomerId} onChange={(e) => setCreateCustomerId(e.target.value)} required>
-                <option value="">— Select customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Total credits</span>
-              <input type="number" min={1} value={createTotalCredits} onChange={(e) => setCreateTotalCredits(e.target.value)} required />
+              <div ref={createCustomerDropdownRef} className="create-membership-customer-wrap">
+                <input
+                  ref={createCustomerInputRef}
+                  type="text"
+                  className="create-membership-customer-input"
+                  value={createCustomerId ? (selectedCustomer ? `${selectedCustomer.name} — ${selectedCustomer.phone}` : '') : createCustomerSearch}
+                  onChange={(e) => {
+                    setCreateCustomerId('');
+                    setCreateCustomerSearch(e.target.value);
+                    setCreateCustomerDropdownOpen(true);
+                  }}
+                  onFocus={() => setCreateCustomerDropdownOpen(true)}
+                  placeholder="Search by name, phone, email or Card ID"
+                  autoComplete="off"
+                  required
+                />
+                {createCustomerId && (
+                  <button
+                    type="button"
+                    className="create-membership-clear-customer"
+                    onClick={() => {
+                      setCreateCustomerId('');
+                      setCreateCustomerSearch('');
+                      setCreateCustomerDropdownOpen(true);
+                      createCustomerInputRef.current?.focus();
+                    }}
+                    aria-label="Clear customer selection"
+                  >
+                    ×
+                  </button>
+                )}
+                {createCustomerDropdownOpen && (
+                  <ul className="customer-name-dropdown settlements-dropdown create-membership-customer-dropdown" role="listbox">
+                    {filteredCreateCustomers.length === 0 ? (
+                      <li className="create-membership-customer-empty">No customers match</li>
+                    ) : (
+                      filteredCreateCustomers.slice(0, 100).map((c) => (
+                        <li key={c.id} role="option" aria-selected={createCustomerId === c.id}>
+                          <button
+                            type="button"
+                            className="dropdown-item"
+                            onClick={() => {
+                              setCreateCustomerId(c.id);
+                              setCreateCustomerSearch('');
+                              setCreateCustomerDropdownOpen(false);
+                              createCustomerInputRef.current?.blur();
+                            }}
+                          >
+                            {c.name} — {c.phone}{c.membershipCardId ? ` (${c.membershipCardId})` : ''}
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
             </label>
             {isAdmin && (
               <label>
@@ -303,12 +394,15 @@ export default function MembershipsList() {
               <select value={createPackageId} onChange={(e) => setCreatePackageId(e.target.value)} required>
                 <option value="">— Select package</option>
                 {packages.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price)}</option>
+                  <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price)} ({p.totalSessions ?? 1} sessions)</option>
                 ))}
               </select>
             </label>
             {createPackageId && selectedPackage && (
               <>
+                <p className="form-hint" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+                  This package includes {(selectedPackage.totalSessions ?? 1)} session{(selectedPackage.totalSessions ?? 1) !== 1 ? 's' : ''}.
+                </p>
                 <label>
                   <span>Total price <strong>*</strong></span>
                   <span className="input-prefix-dollar">

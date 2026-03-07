@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getCustomers, createCustomer } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
 import { useAuth } from '../../../auth/hooks/useAuth';
@@ -223,15 +223,30 @@ export default function CustomersPage() {
                 </thead>
                 <tbody>
                   {paginatedCustomers.map((c) => (
-                      <tr key={c.id}>
+                      <tr
+                        key={c.id}
+                        className="customers-row-clickable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`${basePath}/customers/${c.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`${basePath}/customers/${c.id}`); } }}
+                      >
                         <td>{c.membershipCardId || '—'}</td>
                         <td><strong>{c.name}</strong></td>
                         <td>{c.phone}</td>
                         <td>{c.email || '—'}</td>
                         <td>{c.primaryBranch || '—'}</td>
                         <td>
-                          <Link to={`${basePath}/customers/${c.id}`} className="filter-btn" style={{ marginRight: '0.5rem' }}>View</Link>
-                          <button type="button" className="filter-btn" onClick={() => navigate(`${basePath}/customers/${c.id}?edit=1`)}>Edit</button>
+                          <button
+                            type="button"
+                            className="filter-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`${basePath}/memberships?customerId=${c.id}`);
+                            }}
+                          >
+                            Create membership
+                          </button>
                         </td>
                       </tr>
                   ))}

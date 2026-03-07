@@ -44,6 +44,7 @@ const VendorBranchesPage = lazy(() => import('../pages/vendor/BranchesPage').the
 const VendorSalesPage = lazy(() => import('../pages/vendor/SalesPage').then((m) => ({ default: m.default })));
 const VendorSalesImagesPage = lazy(() => import('../pages/vendor/SalesImagesPage').then((m) => ({ default: m.default })));
 const VendorMembershipsPage = lazy(() => import('../pages/vendor/MembershipsPage').then((m) => ({ default: m.default })));
+const VendorPackagesPage = lazy(() => import('../pages/vendor/PackagesPage').then((m) => ({ default: m.default })));
 const VendorMembershipDetailPage = lazy(() => import('../pages/vendor/MembershipDetailPage').then((m) => ({ default: m.default })));
 const VendorCustomersPage = lazy(() => import('../pages/vendor/CustomersPage').then((m) => ({ default: m.default })));
 const VendorSearchPage = lazy(() => import('../pages/vendor/SearchPage').then((m) => ({ default: m.default })));
@@ -126,6 +127,7 @@ export function AppRoutes() {
             <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="customers/:id/memberships" element={<CustomerMembershipsPage />} />
             <Route path="customers/:id/appointments" element={<CustomerAppointmentsPage />} />
+            <Route path="packages" element={<VendorPackagesPage />} />
             <Route path="search" element={<VendorSearchPage />} />
             <Route path="leads" element={<VendorLeadsPage />} />
             <Route path="leads/:id" element={<VendorLeadDetailPage />} />

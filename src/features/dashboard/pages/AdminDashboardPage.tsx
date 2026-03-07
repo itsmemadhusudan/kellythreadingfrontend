@@ -58,6 +58,7 @@ export default function AdminDashboardPage() {
   const [branchSalesImages, setBranchSalesImages] = useState<SalesImageItem[]>([]);
   const [branchSalesLoading, setBranchSalesLoading] = useState(false);
   const [viewImageDetail, setViewImageDetail] = useState<SalesImageDetail | null>(null);
+  const [viewImageIndex, setViewImageIndex] = useState(0);
 
   const loadSettlements = useCallback(() => {
     setSettlementsLoading(true);
@@ -143,11 +144,15 @@ export default function AdminDashboardPage() {
 
   async function handleViewBranchReceipt(id: string) {
     const r = await getSalesImage(id);
-    if (r.success && r.image) setViewImageDetail(r.image);
+    if (r.success && r.image) {
+      setViewImageDetail(r.image);
+      setViewImageIndex(0);
+    }
   }
 
   function closeViewImage() {
     setViewImageDetail(null);
+    setViewImageIndex(0);
   }
 
   const chartMembershipByBranch = overview.map((o) => ({ name: o.branchName, memberships: o.membershipsSold })).filter((d) => d.memberships > 0 || overview.length <= 10);
@@ -412,11 +417,57 @@ export default function AdminDashboardPage() {
         >
           <div className="sales-images-modal sales-images-modal-with-sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sales-images-modal-main">
-              <img
-                src={viewImageDetail.imageBase64.startsWith('data:') ? viewImageDetail.imageBase64 : `data:image/jpeg;base64,${viewImageDetail.imageBase64}`}
-                alt="Sales receipt"
-                className="sales-images-modal-img"
-              />
+              {viewImageDetail.imageBase64s && viewImageDetail.imageBase64s.length > 0 ? (
+                <>
+                  <img
+                    src={viewImageDetail.imageBase64s[viewImageIndex]?.startsWith('data:') ? viewImageDetail.imageBase64s[viewImageIndex] : `data:image/jpeg;base64,${viewImageDetail.imageBase64s[viewImageIndex]}`}
+                    alt={`Sales receipt ${viewImageIndex + 1} of ${viewImageDetail.imageBase64s.length}`}
+                    className="sales-images-modal-img"
+                  />
+                  {viewImageDetail.imageBase64s.length > 1 && (
+                    <div className="sales-images-modal-nav">
+                      <button
+                        type="button"
+                        className="sales-images-modal-nav-btn"
+                        onClick={(e) => { e.stopPropagation(); setViewImageIndex((i) => Math.max(0, i - 1)); }}
+                        disabled={viewImageIndex <= 0}
+                        aria-label="Previous image"
+                      >
+                        ‹
+                      </button>
+                      <span className="sales-images-modal-nav-label">
+                        {viewImageIndex + 1} / {viewImageDetail.imageBase64s.length}
+                      </span>
+                      <button
+                        type="button"
+                        className="sales-images-modal-nav-btn"
+                        onClick={(e) => { e.stopPropagation(); setViewImageIndex((i) => Math.min(viewImageDetail.imageBase64s.length - 1, i + 1)); }}
+                        disabled={viewImageIndex >= viewImageDetail.imageBase64s.length - 1}
+                        aria-label="Next image"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  {viewImageDetail.imageBase64s.length > 1 && (
+                    <div className="sales-images-modal-thumbs">
+                      {viewImageDetail.imageBase64s.map((src, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`sales-images-modal-thumb ${viewImageIndex === idx ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setViewImageIndex(idx); }}
+                          aria-label={`View image ${idx + 1}`}
+                        >
+                          <img src={src.startsWith('data:') ? src : `data:image/jpeg;base64,${src}`} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="sales-images-modal-no-img">No images</div>
+              )}
             </div>
             <aside className="sales-images-modal-sidebar">
               <div className="sales-images-sidebar-header">

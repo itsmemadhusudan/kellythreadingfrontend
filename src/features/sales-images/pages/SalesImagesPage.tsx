@@ -49,6 +49,7 @@ export default function SalesImagesPage() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('yearly');
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [viewDetail, setViewDetail] = useState<SalesImageDetail | null>(null);
+  const [viewImageIndex, setViewImageIndex] = useState(0);
   const [manualCountInput, setManualCountInput] = useState<string>('');
   const [savingCount, setSavingCount] = useState(false);
   const [countError, setCountError] = useState('');
@@ -57,7 +58,7 @@ export default function SalesImagesPage() {
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadDate, setUploadDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [uploadSalesAmount, setUploadSalesAmount] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [dropActive, setDropActive] = useState(false);
@@ -128,6 +129,7 @@ export default function SalesImagesPage() {
     const r = await getSalesImage(id);
     if (r.success && r.image) {
       setViewDetail(r.image);
+      setViewImageIndex(0);
       setManualCountInput(r.image.manualSalesCount != null ? String(r.image.manualSalesCount) : '');
     }
     setViewingId(null);
@@ -135,6 +137,7 @@ export default function SalesImagesPage() {
 
   function closeModal() {
     setViewDetail(null);
+    setViewImageIndex(0);
     setManualCountInput('');
     setCountError('');
   }
@@ -152,7 +155,7 @@ export default function SalesImagesPage() {
     const r = await updateSalesImage(viewDetail.id, { manualSalesCount: num });
     setSavingCount(false);
     if (r.success && r.image) {
-      setViewDetail({ ...viewDetail, ...r.image, imageBase64: viewDetail.imageBase64 });
+      setViewDetail({ ...viewDetail, ...r.image, imageBase64s: viewDetail.imageBase64s });
       setManualCountInput(r.image.manualSalesCount != null ? String(r.image.manualSalesCount) : '');
       setImages((prev) => prev.map((img) => (img.id === viewDetail.id ? { ...img, ...r.image } : img)));
     } else setCountError(r.message || 'Failed to save');
@@ -169,39 +172,53 @@ export default function SalesImagesPage() {
       setUploadError('Date is required.');
       return;
     }
-    if (!uploadFile) {
-      setUploadError('Please select an image.');
+    if (uploadFiles.length === 0) {
+      setUploadError('Please select at least one image.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-        setUploadError('Could not read image.');
-        return;
-      }
-      setUploading(true);
-      const amountNum = uploadSalesAmount.trim() === '' ? null : Number(uploadSalesAmount);
-      const r = await createSalesImage({
-        title: uploadTitle.trim(),
-        description: uploadDescription.trim() || undefined,
-        date: uploadDate,
-        imageBase64: dataUrl,
-        ...(amountNum != null && !Number.isNaN(amountNum) && amountNum >= 0 ? { salesAmount: amountNum } : {}),
-        ...(isAdmin && branchFilter ? { branchId: branchFilter } : {}),
+    const imageFiles = uploadFiles.filter((f) => f.type?.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      setUploadError('Please select image files (PNG, JPG, etc.).');
+      return;
+    }
+    setUploading(true);
+    const imageBase64s: string[] = [];
+    for (const file of imageFiles) {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string) || '');
+        reader.onerror = () => reject(new Error('Could not read image.'));
+        reader.readAsDataURL(file);
       });
+      if (dataUrl && dataUrl.startsWith('data:image/')) imageBase64s.push(dataUrl);
+    }
+    if (imageBase64s.length === 0) {
+      setUploadError('Could not read any image.');
       setUploading(false);
-      if (r.success) {
-        setShowUpload(false);
-        setUploadTitle('');
-        setUploadDescription('');
-        setUploadDate(new Date().toISOString().slice(0, 10));
-        setUploadSalesAmount('');
-        setUploadFile(null);
-        fetchImages();
-      } else setUploadError(r.message || 'Upload failed');
-    };
-    reader.readAsDataURL(uploadFile);
+      return;
+    }
+    const amountNum = uploadSalesAmount.trim() === '' ? null : Number(uploadSalesAmount);
+    const r = await createSalesImage({
+      title: uploadTitle.trim(),
+      description: uploadDescription.trim() || undefined,
+      date: uploadDate,
+      imageBase64s,
+      ...(amountNum != null && !Number.isNaN(amountNum) && amountNum >= 0 ? { salesAmount: amountNum } : {}),
+      ...(isAdmin && branchFilter ? { branchId: branchFilter } : {}),
+    });
+    setUploading(false);
+    if (r.success) {
+      setShowUpload(false);
+      setUploadTitle('');
+      setUploadDescription('');
+      setUploadDate(new Date().toISOString().slice(0, 10));
+      setUploadSalesAmount('');
+      setUploadFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      fetchImages();
+    } else {
+      setUploadError(r.message || 'Upload failed');
+    }
   }
 
   return (
@@ -236,7 +253,7 @@ export default function SalesImagesPage() {
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              Upload receipt
+              Upload receipts
             </button>
           )}
           <button type="button" className="btn-secondary" onClick={fetchImages} disabled={loading}>
@@ -308,7 +325,7 @@ export default function SalesImagesPage() {
               </svg>
             </div>
             <div>
-              <h2 className="sales-images-upload-title">Upload sales receipt</h2>
+              <h2 className="sales-images-upload-title">Upload sales receipts</h2>
               <p className="sales-images-upload-subtitle">
                 Add daily Sales Data (photo/receipt). Records are retained for 7 days and linked to sales counts.
               </p>
@@ -378,8 +395,8 @@ export default function SalesImagesPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   setDropActive(false);
-                  const file = e.dataTransfer?.files?.[0];
-                  if (file?.type?.startsWith('image/')) setUploadFile(file);
+                  const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type?.startsWith('image/'));
+                  if (files.length > 0) setUploadFiles((prev) => [...prev, ...files]);
                 }}
               >
                 <input
@@ -387,25 +404,45 @@ export default function SalesImagesPage() {
                   id="si-file"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (files.length > 0) setUploadFiles((prev) => [...prev, ...files]);
+                    e.target.value = '';
+                  }}
                   className="sales-images-file-input"
                 />
-                {uploadFile ? (
-                  <div className="sales-images-dropzone-preview">
-                    <span className="sales-images-dropzone-filename">{uploadFile.name}</span>
-                    <span className="sales-images-dropzone-size">
-                      {(uploadFile.size / 1024).toFixed(1)} KB
-                    </span>
+                {uploadFiles.length > 0 ? (
+                  <div className="sales-images-dropzone-preview sales-images-dropzone-preview-multi">
+                    {uploadFiles.map((file, idx) => (
+                      <div key={`${file.name}-${idx}`} className="sales-images-dropzone-file-item">
+                        <span className="sales-images-dropzone-filename">{file.name}</span>
+                        <span className="sales-images-dropzone-size">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                        <button
+                          type="button"
+                          className="sales-images-dropzone-clear"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setUploadFiles((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
                     <button
                       type="button"
-                      className="sales-images-dropzone-clear"
+                      className="sales-images-dropzone-add-more"
                       onClick={(e) => {
                         e.preventDefault();
-                        setUploadFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        fileInputRef.current?.click();
                       }}
                     >
-                      Remove
+                      + Add more images
                     </button>
                   </div>
                 ) : (
@@ -418,7 +455,7 @@ export default function SalesImagesPage() {
                       </svg>
                     </div>
                     <span className="sales-images-dropzone-text">Drag & drop or click to browse</span>
-                    <span className="sales-images-dropzone-hint">PNG, JPG up to 10MB</span>
+                    <span className="sales-images-dropzone-hint">PNG, JPG up to 10MB. Multiple images supported.</span>
                   </>
                 )}
               </label>
@@ -467,7 +504,7 @@ export default function SalesImagesPage() {
             </svg>
           </div>
           <h3 className="sales-images-empty-title">No Sales Data yet</h3>
-          <p className="sales-images-empty-desc">Records are retained for 7 days. Upload your first receipt above.</p>
+          <p className="sales-images-empty-desc">Records are retained for 7 days. Upload receipts above. Admin and staff can both view images.</p>
         </div>
       ) : filteredImages.length === 0 ? (
         <div className="sales-images-empty content-card">
@@ -526,11 +563,57 @@ export default function SalesImagesPage() {
         >
           <div className="sales-images-modal sales-images-modal-with-sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sales-images-modal-main">
-              <img
-                src={viewDetail.imageBase64.startsWith('data:') ? viewDetail.imageBase64 : `data:image/jpeg;base64,${viewDetail.imageBase64}`}
-                alt="Sales receipt"
-                className="sales-images-modal-img"
-              />
+              {viewDetail.imageBase64s && viewDetail.imageBase64s.length > 0 ? (
+                <>
+                  <img
+                    src={viewDetail.imageBase64s[viewImageIndex]?.startsWith('data:') ? viewDetail.imageBase64s[viewImageIndex] : `data:image/jpeg;base64,${viewDetail.imageBase64s[viewImageIndex]}`}
+                    alt={`Sales receipt ${viewImageIndex + 1} of ${viewDetail.imageBase64s.length}`}
+                    className="sales-images-modal-img"
+                  />
+                  {viewDetail.imageBase64s.length > 1 && (
+                    <div className="sales-images-modal-nav">
+                      <button
+                        type="button"
+                        className="sales-images-modal-nav-btn"
+                        onClick={(e) => { e.stopPropagation(); setViewImageIndex((i) => Math.max(0, i - 1)); }}
+                        disabled={viewImageIndex <= 0}
+                        aria-label="Previous image"
+                      >
+                        ‹
+                      </button>
+                      <span className="sales-images-modal-nav-label">
+                        {viewImageIndex + 1} / {viewDetail.imageBase64s.length}
+                      </span>
+                      <button
+                        type="button"
+                        className="sales-images-modal-nav-btn"
+                        onClick={(e) => { e.stopPropagation(); setViewImageIndex((i) => Math.min(viewDetail.imageBase64s.length - 1, i + 1)); }}
+                        disabled={viewImageIndex >= viewDetail.imageBase64s.length - 1}
+                        aria-label="Next image"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                  {viewDetail.imageBase64s.length > 1 && (
+                    <div className="sales-images-modal-thumbs">
+                      {viewDetail.imageBase64s.map((src, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`sales-images-modal-thumb ${viewImageIndex === idx ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setViewImageIndex(idx); }}
+                          aria-label={`View image ${idx + 1}`}
+                        >
+                          <img src={src.startsWith('data:') ? src : `data:image/jpeg;base64,${src}`} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="sales-images-modal-no-img">No images</div>
+              )}
             </div>
             <aside className="sales-images-modal-sidebar">
               <div className="sales-images-sidebar-header">

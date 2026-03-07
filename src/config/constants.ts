@@ -41,6 +41,7 @@ export const ROUTES = {
     membershipDetail: (id: string) => `/vendor/memberships/${id}`,
     customers: '/vendor/customers',
     customerMemberships: (customerId: string) => `/vendor/customers/${customerId}/memberships`,
+    packages: '/vendor/packages',
     customerAppointments: (customerId: string) => `/vendor/customers/${customerId}/appointments`,
     search: '/vendor/search',
     leads: '/vendor/leads',

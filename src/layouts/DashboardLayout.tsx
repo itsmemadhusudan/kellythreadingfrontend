@@ -38,6 +38,7 @@ const branchNav: NavItem[] = [
   { to: ROUTES.vendor.salesImages, label: 'Sales Data', icon: '🖼️' },
   { to: ROUTES.vendor.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.vendor.customers, label: 'Customers', icon: '👥' },
+  { to: ROUTES.vendor.packages, label: 'Packages', icon: '📦' },
   { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥' },
   { to: ROUTES.vendor.appointments, label: 'Appointments', icon: '📅' },
   { to: ROUTES.vendor.settlements, label: 'Settlements', icon: '📋' },

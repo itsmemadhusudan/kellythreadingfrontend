@@ -6092,6 +6092,20 @@
   background: var(--theme-bg);
 }
 
+.customers-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.customers-row-clickable:hover {
+  background-color: rgba(99, 102, 241, 0.08);
+}
+
+.customers-row-clickable:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
+}
+
 .data-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -6126,6 +6140,79 @@
 .customer-name-dropdown .dropdown-item:hover,
 .customer-name-dropdown .dropdown-item-new:hover {
   background: var(--theme-border);
+}
+
+/* Create membership – searchable customer selector */
+.create-membership-customer-wrap {
+  position: relative;
+}
+.create-membership-customer-wrap input.create-membership-customer-input {
+  padding-right: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Dark theme: ensure customer selection field is not transparent */
+:not([data-theme="light"]) .create-membership-customer-wrap input.create-membership-customer-input {
+  background: #1e2230;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--theme-text-heading, #fff);
+}
+
+:not([data-theme="light"]) .create-membership-customer-wrap input.create-membership-customer-input:focus {
+  background: #252a3a;
+}
+
+/* Dark theme: ensure customer dropdown list has solid background */
+:not([data-theme="light"]) .create-membership-customer-dropdown {
+  background: #1e2230 !important;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+:not([data-theme="light"]) .create-membership-customer-dropdown .dropdown-item {
+  background: transparent;
+  color: var(--theme-text-heading, #fff);
+}
+
+:not([data-theme="light"]) .create-membership-customer-dropdown .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:not([data-theme="light"]) .create-membership-customer-empty {
+  color: var(--theme-text);
+}
+.create-membership-clear-customer {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  background: var(--theme-border);
+  color: var(--theme-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.create-membership-clear-customer:hover {
+  background: var(--theme-text);
+  color: var(--theme-bg);
+}
+.create-membership-customer-dropdown {
+  margin-top: 2px;
+}
+.create-membership-customer-empty {
+  padding: 0.75rem 1rem;
+  color: var(--theme-text);
+  font-size: 0.9rem;
+  text-align: center;
 }
 .customer-name-dropdown .dropdown-item-new {
   font-weight: 600;
@@ -6553,6 +6640,57 @@
 
 .sales-images-dropzone-clear:hover {
   background: rgba(220, 38, 38, 0.08);
+}
+
+.sales-images-dropzone-preview-multi {
+  align-items: stretch;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sales-images-dropzone-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--theme-bg);
+  border-radius: 6px;
+  border: 1px solid var(--theme-border);
+}
+
+.sales-images-dropzone-file-item .sales-images-dropzone-filename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sales-images-dropzone-file-item .sales-images-dropzone-size {
+  flex-shrink: 0;
+}
+
+.sales-images-dropzone-file-item .sales-images-dropzone-clear {
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sales-images-dropzone-add-more {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--theme-link);
+  background: transparent;
+  border: 1px dashed var(--theme-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sales-images-dropzone-add-more:hover {
+  background: var(--theme-bg);
+  border-color: var(--theme-link);
 }
 
 .sales-images-upload-error {
@@ -6995,10 +7133,95 @@
   vertical-align: middle;
 }
 
+.sales-images-modal-main {
+  position: relative;
+}
+
 .sales-images-modal-img {
   max-width: 100%;
-  max-height: 85vh;
+  max-height: 75vh;
   display: block;
+  border-radius: 8px;
+}
+
+.sales-images-modal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.sales-images-modal-nav-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: var(--theme-bg);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  color: var(--theme-text-heading);
+  cursor: pointer;
+}
+
+.sales-images-modal-nav-btn:hover:not(:disabled) {
+  background: var(--theme-bg-muted);
+  border-color: var(--theme-link);
+  color: var(--theme-link);
+}
+
+.sales-images-modal-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sales-images-modal-nav-label {
+  font-size: 0.9rem;
+  color: var(--theme-text);
+}
+
+.sales-images-modal-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.sales-images-modal-thumb {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border: 2px solid var(--theme-border);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--theme-bg);
+}
+
+.sales-images-modal-thumb:hover,
+.sales-images-modal-thumb.active {
+  border-color: var(--theme-link);
+  box-shadow: 0 0 0 1px var(--theme-link);
+}
+
+.sales-images-modal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sales-images-modal-no-img {
+  padding: 3rem;
+  text-align: center;
+  color: var(--theme-text);
+  background: var(--theme-bg);
   border-radius: 8px;
 }
 
