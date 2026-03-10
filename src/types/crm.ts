@@ -33,6 +33,7 @@ export interface Membership {
   id: string;
   customer?: { id: string; name: string; phone: string; email?: string; membershipCardId?: string } | null;
   typeName?: string;
+  packageName?: string;
   totalCredits: number;
   usedCredits: number;
   remainingCredits?: number;
@@ -63,6 +64,8 @@ export interface Lead {
   source: string;
   branch?: string;
   branchId?: string;
+  service?: string;
+  serviceId?: string;
   status: string;
   followUps?: { note: string; at: string; byUserId?: string }[];
   followUpsCount?: number;
@@ -75,6 +78,7 @@ export interface Service {
   name: string;
   category?: string;
   branch?: string;
+  branchId?: string;
   durationMinutes?: number;
   price?: number;
 }
@@ -111,6 +115,7 @@ export interface SalesDashboard {
   breakdownLimit?: number;
   byBranch: { branch: string; sales?: number; revenue: number; membershipCount?: number }[];
   byService: { serviceCategory: string; revenue: number }[];
+  dailySales?: { date: string; sales: number }[];
   totalMemberships: number;
   branches: { id: string; name: string }[];
 }

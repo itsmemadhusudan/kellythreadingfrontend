@@ -17,19 +17,13 @@ export default function MembershipDetailPage() {
   const [error, setError] = useState('');
   const [useCredits, setUseCredits] = useState(1);
   const [useNotes, setUseNotes] = useState('');
-  const [serviceDetails, setServiceDetails] = useState('');
   const [usedAtBranchId, setUsedAtBranchId] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [renewing, setRenewing] = useState(false);
-  const [renewPrice, setRenewPrice] = useState('0');
   const [renewCredits, setRenewCredits] = useState('');
-  const [renewExpiry, setRenewExpiry] = useState('');
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
-  const isOtherBranchPackage = Boolean(
-    user?.branchId && membership?.soldAtBranchId && String(user.branchId) !== String(membership.soldAtBranchId)
-  );
 
   useEffect(() => {
     if (!id) return;
@@ -41,7 +35,6 @@ export default function MembershipDetailPage() {
         setUsageHistory(r.usageHistory || []);
         if (m && (m.status === 'expired' || m.status === 'used')) {
           setRenewCredits(String(m.totalCredits));
-          setRenewPrice('0');
         }
       } else setError(r.message || 'Failed to load');
     });
@@ -77,14 +70,9 @@ export default function MembershipDetailPage() {
       setError(`Only ${remaining} credit(s) remaining.`);
       return;
     }
-    const isOtherBranch = Boolean(membership.soldAtBranchId && String(usedAtBranchId) !== String(membership.soldAtBranchId));
-    if (isOtherBranch && !serviceDetails.trim()) {
-      setError('Please enter service/visit details when using a package from another branch.');
-      return;
-    }
     setSubmitting(true);
     setError('');
-    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes, serviceDetails: serviceDetails.trim() || undefined, usedAtBranchId });
+    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes.trim() || undefined, usedAtBranchId });
     setSubmitting(false);
     if (res.success) {
       getMembership(id).then((r) => {
@@ -93,7 +81,6 @@ export default function MembershipDetailPage() {
           setUsageHistory(r.usageHistory || []);
           setUseCredits(1);
           setUseNotes('');
-          setServiceDetails('');
         }
       });
     } else setError((res as { message?: string }).message || 'Failed to record usage');
@@ -102,11 +89,6 @@ export default function MembershipDetailPage() {
   async function handleRenew(e: React.FormEvent) {
     e.preventDefault();
     if (!id || !membership) return;
-    const price = parseFloat(renewPrice);
-    if (Number.isNaN(price) || price < 0) {
-      setError('Please enter a valid renewal price (0 or greater).');
-      return;
-    }
     const credits = renewCredits.trim() ? parseInt(renewCredits, 10) : membership.totalCredits;
     if (Number.isNaN(credits) || credits < 1) {
       setError('Total credits must be at least 1.');
@@ -115,9 +97,8 @@ export default function MembershipDetailPage() {
     setRenewing(true);
     setError('');
     const res = await renewMembership(id, {
-      packagePrice: price,
+      packagePrice: 0,
       totalCredits: credits,
-      expiryDate: renewExpiry.trim() || undefined,
     });
     setRenewing(false);
     if (res.success && res.membership) {
@@ -203,40 +184,24 @@ export default function MembershipDetailPage() {
               ) : (
                 <p className="membership-renew-title">This membership has been fully used.</p>
               )}
-              {user?.role !== 'admin' && (
-                <p className="membership-renew-hint">Contact your admin to renew.</p>
-              )}
             </div>
-            {user?.role === 'admin' && (
-              <form onSubmit={handleRenew} className="membership-renew-form">
-                <h4 className="membership-renew-form-title">Renew membership</h4>
-                <p className="membership-renew-form-desc">Set price and credits. The renewal will be included in total sales.</p>
-                {error && <div className="auth-error">{error}</div>}
-                <label>
-                  <span>Renewal price ($) <strong>*</strong></span>
-                  <input type="number" min={0} step={0.01} value={renewPrice} onChange={(e) => setRenewPrice(e.target.value)} placeholder="0" required />
-                </label>
-                <label>
-                  <span>Total credits</span>
-                  <input type="number" min={1} value={renewCredits} onChange={(e) => setRenewCredits(e.target.value)} placeholder={String(membership!.totalCredits)} />
-                </label>
-                <label>
-                  <span>Expiry date (optional)</span>
-                  <input type="date" value={renewExpiry} onChange={(e) => setRenewExpiry(e.target.value)} />
-                </label>
-                <button type="submit" className="auth-submit" disabled={renewing}>{renewing ? 'Renewing…' : 'Renew'}</button>
-              </form>
-            )}
+            <form onSubmit={handleRenew} className="membership-renew-form">
+              <h4 className="membership-renew-form-title">Renew membership</h4>
+              <p className="membership-renew-form-desc">Set total credits for the renewal.</p>
+              {error && <div className="auth-error">{error}</div>}
+              <label>
+                <span>Total credits</span>
+                <input type="number" min={1} value={renewCredits} onChange={(e) => setRenewCredits(e.target.value)} placeholder={String(membership!.totalCredits)} required />
+              </label>
+              <button type="submit" className="auth-submit" disabled={renewing}>{renewing ? 'Renewing…' : 'Renew'}</button>
+            </form>
           </div>
         )}
 
         {canUse && (
           <div className="membership-use-section">
             <form onSubmit={handleUse} className="membership-use-form">
-              <h4 className="membership-use-title">{isOtherBranchPackage ? 'Record service (other branch)' : 'Use credits'}</h4>
-              {isOtherBranchPackage && (
-                <p className="membership-use-hint">Sold at <strong>{membership!.soldAtBranch}</strong>. Enter service details below.</p>
-              )}
+              <h4 className="membership-use-title">Use credits</h4>
               {error && <div className="auth-error">{error}</div>}
               <label>
                 <span>Branch (used at) <strong>*</strong></span>
@@ -257,10 +222,6 @@ export default function MembershipDetailPage() {
               <label>
                 <span>Credits to use</span>
                 <input type="number" min={1} max={remaining} value={useCredits} onChange={(e) => setUseCredits(Number(e.target.value))} />
-              </label>
-              <label>
-                <span>Service / visit details {isOtherBranchPackage ? '(required)' : '(optional)'}</span>
-                <textarea value={serviceDetails} onChange={(e) => setServiceDetails(e.target.value)} placeholder="e.g. service name, staff, date/time" rows={3} />
               </label>
               <label>
                 <span>Notes (optional)</span>

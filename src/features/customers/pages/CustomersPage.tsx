@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCustomers, createCustomer } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
+import { getSettings } from '../../../api/settings';
 import { useAuth } from '../../../auth/hooks/useAuth';
-import { formatCurrency } from '../../../utils/money';
 import type { Customer, Branch } from '../../../types/common';
 
 export default function CustomersPage() {
@@ -22,15 +22,13 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [branchFilterId, setBranchFilterId] = useState('');
   const [page, setPage] = useState(1);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: number; fail: number; skipped: number } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [showImportButton, setShowImportButton] = useState(true);
   const isAdmin = user?.role === 'admin';
   const PAGE_SIZE = 10;
   const basePath = isAdmin ? '/admin' : '/vendor';
-
-  const isPackageExpired = (expiry: string | undefined) => expiry && new Date(expiry) < new Date(new Date().setHours(0, 0, 0, 0));
-  const expiredCount = useMemo(
-    () => customers.filter((c) => c.customerPackage && isPackageExpired(c.customerPackageExpiry)).length,
-    [customers]
-  );
 
   const { filteredCustomers, totalFiltered, totalPages, currentPage, paginatedCustomers } = useMemo(() => {
     const selectedBranchName = branchFilterId ? branches.find((b) => b.id === branchFilterId)?.name : null;
@@ -88,6 +86,14 @@ export default function CustomersPage() {
     getBranches({ all: true }).then((r) => r.success && r.branches && setBranches(r.branches || []));
   }, []);
 
+  useEffect(() => {
+    getSettings().then((r) => {
+      if (r.success && r.settings && typeof r.settings.showImportButton === 'boolean') {
+        setShowImportButton(r.settings.showImportButton);
+      }
+    });
+  }, []);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -114,21 +120,71 @@ export default function CustomersPage() {
     return /[,"\n\r]/.test(s) ? `"${s}"` : s;
   }
 
-  function exportToCsv() {
-    const headers = ['Card ID', 'Name', 'Phone', 'Email', ...(isAdmin ? ['Package', 'Price', 'Expiry'] : []), 'Branch'];
-    const rows = filteredCustomers.map((c) => {
-      const base = [
-        c.membershipCardId ?? '—',
-        c.name ?? '—',
-        c.phone ?? '—',
-        c.email ?? '—',
-      ];
-      if (isAdmin) {
-        base.push(c.customerPackage ?? '—', c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—', c.customerPackageExpiry ?? '—');
+  type ImportRow = Record<string, unknown>;
+
+  function extractCustomerRows(parsed: unknown): ImportRow[] {
+    if (Array.isArray(parsed)) {
+      const tableObj = parsed.find((item) => item && typeof item === 'object' && (item as { type?: string; name?: string }).type === 'table' && Array.isArray((item as { data?: unknown[] }).data));
+      if (tableObj) return (tableObj as { data: ImportRow[] }).data;
+      return parsed;
+    }
+    if (parsed && typeof parsed === 'object') {
+      const o = parsed as Record<string, unknown>;
+      if (Array.isArray(o.customers)) return o.customers as ImportRow[];
+      if (Array.isArray(o.data)) return o.data as ImportRow[];
+    }
+    return [];
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setImportResult(null);
+    setImporting(true);
+    let ok = 0, fail = 0, skipped = 0;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const rows = extractCustomerRows(parsed);
+      if (rows.length === 0) { setError('No customer data found. Expected array, { customers: [...] }, { data: [...] }, or PHPMyAdmin table export.'); setImporting(false); return; }
+
+      const str = (v: unknown) => (v != null && v !== '' ? String(v).trim() : '');
+      const legacyMap: Record<string, string> = JSON.parse(localStorage.getItem('customerLegacyIdMap') || '{}');
+      for (const row of rows) {
+        const name = str(row.customer_name ?? row.name ?? row.customerName);
+        const phone = str(row.contact ?? row.phone ?? row.Phone ?? row.Contact);
+        if (!name || !phone) { skipped++; continue; }
+        const res = await createCustomer({
+          name,
+          phone,
+          email: str(row.email) || undefined,
+          notes: str(row.address ?? row.notes) || undefined,
+          primaryBranchId: user?.branchId || undefined,
+        });
+        if (res.success) {
+          ok++;
+          const oldId = str(row.id);
+          if (oldId && (res as unknown as { customer?: { id?: string } }).customer?.id) {
+            legacyMap[oldId] = (res as unknown as { customer: { id: string } }).customer.id;
+          }
+        } else fail++;
       }
-      base.push(c.primaryBranch ?? '—');
-      return base.map(escapeCsvCell);
-    });
+      if (Object.keys(legacyMap).length > 0) localStorage.setItem('customerLegacyIdMap', JSON.stringify(legacyMap));
+      setImportResult({ ok, fail, skipped });
+      if (ok > 0) fetchCustomers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid JSON file');
+    }
+    setImporting(false);
+  }
+
+  function exportToCsv() {
+    const headers = ['Card ID', 'Name', 'Phone', 'Email', 'Branch'];
+    const rows = filteredCustomers.map((c) =>
+      [c.membershipCardId ?? '—', c.name ?? '—', c.phone ?? '—', c.email ?? '—', c.primaryBranch ?? '—'].map(escapeCsvCell)
+    );
     const csv = [headers.map(escapeCsvCell).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -154,9 +210,30 @@ export default function CustomersPage() {
         <p className="page-hero-subtitle">Customer list. Add customers here; assign package and membership from the Memberships page.</p>
       </header>
       <section className="content-card">
-        <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : 'Add customer'}
-        </button>
+        <div className="customers-top-actions">
+          <button type="button" className="auth-submit" style={{ width: 'auto' }} onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : 'Add customer'}
+          </button>
+          {showImportButton && (
+            <label className="customers-import-btn">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="customers-import-input"
+                aria-label="Import customers from JSON"
+                onChange={handleImportFile}
+                disabled={importing}
+              />
+              {importing ? 'Importing…' : 'Import from JSON'}
+            </label>
+          )}
+        </div>
+        {importResult && (
+          <p className="customers-import-result">
+            Import complete: {importResult.ok} created, {importResult.fail} failed, {importResult.skipped} skipped (missing name/phone).
+          </p>
+        )}
         {showForm && (
           <form onSubmit={handleCreate} className="auth-form" style={{ marginBottom: '1rem', maxWidth: '400px' }}>
             <label><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} required /></label>
@@ -175,11 +252,6 @@ export default function CustomersPage() {
             )}
             <button type="submit" className="auth-submit">Create customer</button>
           </form>
-        )}
-        {isAdmin && expiredCount > 0 && (
-          <div className="package-expired-alert" role="alert">
-            <strong>Package expired:</strong> {expiredCount} customer{expiredCount !== 1 ? 's have' : ' has'} a package that has expired. Please renew from Memberships.
-          </div>
         )}
         {error && <div className="auth-error vendors-error">{error}</div>}
         {customers.length > 0 ? (
@@ -200,17 +272,22 @@ export default function CustomersPage() {
                   </select>
                 </label>
               )}
-              <label className="customers-search-label">
-                <span>Search by Card ID, name, phone or email</span>
-                <input
-                  type="search"
-                  className="customers-search-input"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search customers by card ID, name, phone or email"
-                />
-              </label>
+              <div className="customers-search-group">
+                <label className="customers-search-label">
+                  <span>Search by Card ID, name, phone or email</span>
+                  <input
+                    type="search"
+                    className="customers-search-input"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Search customers by card ID, name, phone or email"
+                  />
+                </label>
+                <button type="button" className="customers-search-btn" onClick={() => document.querySelector<HTMLInputElement>('.customers-search-input')?.focus()}>
+                  Search
+                </button>
+              </div>
               <button
                 type="button"
                 className="customers-export-btn"
@@ -220,55 +297,124 @@ export default function CustomersPage() {
               >
                 Export to CSV / Excel
               </button>
+              {showImportButton && (
+                <label className="customers-import-btn customers-import-btn-inline">
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    className="customers-import-input"
+                    aria-label="Import customers from JSON"
+                    onChange={handleImportFile}
+                    disabled={importing}
+                  />
+                  {importing ? 'Importing…' : 'Import from JSON'}
+                </label>
+              )}
             </div>
             {totalFiltered > 0 && (
               <p className="customers-showing-count text-muted">
                 Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalFiltered)} of {totalFiltered} customer{totalFiltered !== 1 ? 's' : ''}
               </p>
             )}
-            <div className="data-table-wrap">
-              <table className="data-table">
+            {/* Mobile: card list */}
+            <div className="customers-mobile-cards">
+              {paginatedCustomers.map((c) => (
+                <div
+                  key={c.id}
+                  className="customer-mobile-card"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`${basePath}/customers/${c.id}`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`${basePath}/customers/${c.id}`); } }}
+                >
+                  <div className="customer-mobile-card-main">
+                    <div className="customer-mobile-card-row">
+                      <span className="customer-mobile-label">Card ID</span>
+                      <span className="customer-mobile-value">{c.membershipCardId || '—'}</span>
+                    </div>
+                    <div className="customer-mobile-card-row">
+                      <span className="customer-mobile-label">Name</span>
+                      <span className="customer-mobile-value"><strong>{c.name}</strong></span>
+                    </div>
+                    <div className="customer-mobile-card-row">
+                      <span className="customer-mobile-label">Phone</span>
+                      <span className="customer-mobile-value">{c.phone}</span>
+                    </div>
+                    <div className="customer-mobile-card-row">
+                      <span className="customer-mobile-label">Email</span>
+                      <span className="customer-mobile-value">{c.email || '—'}</span>
+                    </div>
+                    <div className="customer-mobile-card-row">
+                      <span className="customer-mobile-label">Branch</span>
+                      <span className="customer-mobile-value">{c.primaryBranch || '—'}</span>
+                    </div>
+                  </div>
+                  <div className="customer-mobile-card-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="filter-btn"
+                      onClick={() => navigate(`${basePath}/customers/${c.id}`)}
+                      title="View customer"
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className="filter-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`${basePath}/memberships?customerId=${c.id}`);
+                      }}
+                      title="Create membership"
+                    >
+                      Create membership
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="data-table-wrap customers-table-wrap">
+              <table className="data-table customers-table">
                 <thead>
                   <tr>
                     <th>Card ID</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Email</th>
-                    {isAdmin && (
-                      <>
-                        <th>Package</th>
-                        <th>Price</th>
-                        <th>Expiry</th>
-                      </>
-                    )}
                     <th>Branch</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedCustomers.map((c) => {
-                    const expired = isAdmin && c.customerPackage && isPackageExpired(c.customerPackageExpiry);
-                    return (
-                      <tr key={c.id} className={expired ? 'package-expired-row' : ''}>
+                  {paginatedCustomers.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="customers-row-clickable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`${basePath}/customers/${c.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`${basePath}/customers/${c.id}`); } }}
+                      >
                         <td>{c.membershipCardId || '—'}</td>
                         <td><strong>{c.name}</strong></td>
                         <td>{c.phone}</td>
                         <td>{c.email || '—'}</td>
-                        {isAdmin && (
-                          <>
-                            <td>{c.customerPackage ? (expired ? <span>{c.customerPackage} <span className="status-badge status-expired">Expired</span></span> : c.customerPackage) : '—'}</td>
-                            <td>{c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—'}</td>
-                            <td>{c.customerPackageExpiry ? (expired ? <span className="text-expired">{c.customerPackageExpiry}</span> : c.customerPackageExpiry) : '—'}</td>
-                          </>
-                        )}
                         <td>{c.primaryBranch || '—'}</td>
                         <td>
-                          <Link to={`${basePath}/customers/${c.id}`} className="filter-btn" style={{ marginRight: '0.5rem' }}>View</Link>
-                          <button type="button" className="filter-btn" onClick={() => navigate(`${basePath}/customers/${c.id}?edit=1`)}>Edit</button>
+                          <button
+                            type="button"
+                            className="filter-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`${basePath}/memberships?customerId=${c.id}`);
+                            }}
+                          >
+                            Create membership
+                          </button>
                         </td>
                       </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>

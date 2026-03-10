@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getBranches, createBranch, updateBranch, deleteBranch } from '../api/branches';
+import { getSettings } from '../api/settings';
 import { useAuth } from '../auth/hooks/useAuth';
 import type { Branch } from '../types/crm';
 
@@ -19,6 +20,10 @@ export default function BranchesPage() {
   const [editZipCode, setEditZipCode] = useState('');
   const [deletingBranchId, setDeletingBranchId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: number; fail: number; skipped: number } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [showImportButton, setShowImportButton] = useState(true);
   const isAdmin = user?.role === 'admin';
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(branches.length / PAGE_SIZE));
@@ -35,6 +40,14 @@ export default function BranchesPage() {
 
   useEffect(() => {
     loadBranches();
+  }, []);
+
+  useEffect(() => {
+    getSettings().then((r) => {
+      if (r.success && r.settings && typeof r.settings.showImportButton === 'boolean') {
+        setShowImportButton(r.settings.showImportButton);
+      }
+    });
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
@@ -86,6 +99,63 @@ export default function BranchesPage() {
     } else setError(res.message || 'Failed to delete');
   }
 
+  function extractBranchRows(parsed: unknown): Record<string, unknown>[] {
+    if (Array.isArray(parsed)) {
+      const tableObj = parsed.find((item) => item && typeof item === 'object' && (item as { type?: string }).type === 'table' && Array.isArray((item as { data?: unknown[] }).data));
+      if (tableObj) return (tableObj as { data: Record<string, unknown>[] }).data;
+      return parsed;
+    }
+    if (parsed && typeof parsed === 'object') {
+      const o = parsed as Record<string, unknown>;
+      if (Array.isArray(o.data)) return o.data as Record<string, unknown>[];
+      if (Array.isArray(o.branches)) return o.branches as Record<string, unknown>[];
+    }
+    return [];
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setImportResult(null);
+    setImporting(true);
+    let ok = 0, fail = 0, skipped = 0;
+    const legacyMap: Record<string, string> = JSON.parse(localStorage.getItem('branchLegacyIdMap') || '{}');
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const rows = extractBranchRows(parsed);
+      if (rows.length === 0) {
+        setError('No branch data found. Expected PHPMyAdmin table export or { data: [...] }.');
+        setImporting(false);
+        return;
+      }
+      const str = (v: unknown) => (v != null && v !== '' ? String(v).trim() : '');
+      for (const row of rows) {
+        const name = str(row.branch ?? row.name ?? row.branch_name);
+        if (!name) { skipped++; continue; }
+        const address = str(row.street_address ?? row.address ?? row.streetAddress);
+        const zipMatch = address.match(/\b(\d{5}(?:-\d{4})?)\b/);
+        const zipCode = zipMatch ? zipMatch[1] : str(row.zip_code ?? row.zipCode ?? row.zip);
+        const res = await createBranch({ name, address: address || undefined, zipCode: zipCode || undefined });
+        if (res.success) {
+          ok++;
+          const oldId = str(row.id);
+          if (oldId && (res as unknown as { branch?: { id?: string } }).branch?.id) {
+            legacyMap[oldId] = (res as unknown as { branch: { id: string } }).branch.id;
+          }
+        } else fail++;
+      }
+      if (Object.keys(legacyMap).length > 0) localStorage.setItem('branchLegacyIdMap', JSON.stringify(legacyMap));
+      setImportResult({ ok, fail, skipped });
+      if (ok > 0) loadBranches();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid JSON file');
+    }
+    setImporting(false);
+  }
+
   if (loading) {
     return (
       <div className="dashboard-content">
@@ -102,9 +172,30 @@ export default function BranchesPage() {
       </header>
       <section className="content-card">
         {isAdmin && (
-          <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : 'Add branch'}
-          </button>
+          <div className="branches-top-actions">
+            <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
+              {showForm ? 'Cancel' : 'Add branch'}
+            </button>
+            {showImportButton && (
+              <label className="branches-import-btn">
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="branches-import-input"
+                  aria-label="Import branches from JSON"
+                  onChange={handleImportFile}
+                  disabled={importing}
+                />
+                {importing ? 'Importing…' : 'Import from JSON'}
+              </label>
+            )}
+          </div>
+        )}
+        {importResult && (
+          <p className="branches-import-result">
+            Import complete: {importResult.ok} created, {importResult.fail} failed, {importResult.skipped} skipped (missing name).
+          </p>
         )}
         {showForm && (
           <form onSubmit={handleCreate} className="auth-form" style={{ marginBottom: '1rem', maxWidth: '420px' }}>
@@ -117,11 +208,42 @@ export default function BranchesPage() {
         {error && <div className="auth-error vendors-error">{error}</div>}
         {branches.length > 0 ? (
           <>
-            <p className="customers-showing-count text-muted">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, branches.length)} of {branches.length} branch{branches.length !== 1 ? 'es' : ''}
-            </p>
-            <div className="data-table-wrap">
-              <table className="data-table">
+            <section className="branches-section">
+              <h2 className="branches-section-title">Branch list</h2>
+              <p className="customers-showing-count text-muted">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, branches.length)} of {branches.length} branch{branches.length !== 1 ? 'es' : ''}
+              </p>
+              {/* Mobile: card list (managed format) */}
+              <div className="branches-mobile-cards">
+              {paginatedBranches.map((b) => (
+                <div key={b.id} className="branch-mobile-card">
+                  <div className="branch-mobile-card-main">
+                    <div className="branch-mobile-card-row">
+                      <span className="branch-mobile-label">Name</span>
+                      <span className="branch-mobile-value"><strong>{b.name}</strong></span>
+                    </div>
+                    <div className="branch-mobile-card-row">
+                      <span className="branch-mobile-label">Address</span>
+                      <span className="branch-mobile-value">{b.address || '—'}</span>
+                    </div>
+                    <div className="branch-mobile-card-row">
+                      <span className="branch-mobile-label">Zip code</span>
+                      <span className="branch-mobile-value">{b.zipCode || '—'}</span>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div className="branch-mobile-card-actions">
+                      <button type="button" className="branch-action-btn branch-action-view" onClick={() => setViewingBranch(b)} title="View">View</button>
+                      <button type="button" className="branch-action-btn branch-action-edit" onClick={() => openEdit(b)} title="Edit">Edit</button>
+                      <button type="button" className="branch-action-btn branch-action-delete" onClick={() => setDeletingBranchId(b.id)} title="Delete">Delete</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="data-table-wrap branches-table-wrap">
+              <table className="data-table branches-table">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -148,13 +270,14 @@ export default function BranchesPage() {
                 </tbody>
               </table>
             </div>
-            {totalPages > 1 && (
-              <div className="customers-pagination">
-                <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label="Previous page">Previous</button>
-                <span className="pagination-info">Page {currentPage} of {totalPages}</span>
-                <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label="Next page">Next</button>
-              </div>
-            )}
+              {totalPages > 1 && (
+                <div className="customers-pagination">
+                  <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label="Previous page">Previous</button>
+                  <span className="pagination-info">Page {currentPage} of {totalPages}</span>
+                  <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label="Next page">Next</button>
+                </div>
+              )}
+            </section>
           </>
         ) : (
           <p className="vendors-empty">

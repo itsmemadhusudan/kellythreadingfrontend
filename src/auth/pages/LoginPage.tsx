@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../auth.store';
 import { ROUTES, LOGO_URL } from '../../config/constants';
 import { AuthBackgroundAnimation } from '../components/AuthBackgroundAnimation';
@@ -55,7 +55,7 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuthStore();
+  const { login, user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
@@ -65,11 +65,13 @@ export default function LoginPage() {
     if (params.get('blocked') === '1') setError(BLOCKED_MESSAGE);
   }, [location.search]);
 
-  if (user) {
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
     const redirect = user.role === 'admin' ? ROUTES.admin.root : ROUTES.vendor.root;
     navigate(from || redirect, { replace: true });
-    return null;
-  }
+  }, [isAuthenticated, user, from, navigate]);
+
+  if (isAuthenticated && user) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -152,7 +154,6 @@ export default function LoginPage() {
                 />
                 <span>Remember me</span>
               </label>
-              <Link to={ROUTES.forgotPassword} className="login-modern-forgot">Forgot password?</Link>
             </div>
             <button type="submit" className="login-modern-submit" disabled={loading}>
               {loading ? 'Signing in...' : 'LOGIN'}

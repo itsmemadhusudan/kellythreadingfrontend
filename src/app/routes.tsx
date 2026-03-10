@@ -6,19 +6,26 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { VendorApprovalGuard } from '../auth/components/VendorApprovalGuard';
 import { AuthLayout } from '../auth/components/AuthLayout';
 import { PageLoader } from '../components/ui/PageLoader';
+import { ChunkErrorFallback } from '../components/ui/ChunkErrorFallback';
 import { ROUTES } from '../config/constants';
+
+function lazyWithChunkError(importFn: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() =>
+    importFn().catch(() => ({ default: ChunkErrorFallback }))
+  );
+}
 
 // Auth pages – lazy loaded
 const LoginPage = lazy(() => import('../auth/pages/LoginPage').then((m) => ({ default: m.default })));
 const ForgotPasswordPage = lazy(() => import('../auth/pages/ForgotPasswordPage').then((m) => ({ default: m.default })));
 
 // Admin pages – lazy loaded
-const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((m) => ({ default: m.default })));
-const OwnerOverviewPage = lazy(() => import('../pages/admin/OwnerOverviewPage').then((m) => ({ default: m.default })));
+const AdminDashboardPage = lazyWithChunkError(() => import('../features/dashboard/pages/AdminDashboardPage').then((m) => ({ default: m.default })));
 const AdminVendorsPage = lazy(() => import('../pages/admin/VendorsPage').then((m) => ({ default: m.default })));
 const AdminCreateVendorPage = lazy(() => import('../pages/admin/CreateVendorPage').then((m) => ({ default: m.default })));
 const AdminBranchesPage = lazy(() => import('../pages/admin/BranchesPage').then((m) => ({ default: m.default })));
 const AdminSalesPage = lazy(() => import('../pages/admin/SalesPage').then((m) => ({ default: m.default })));
+const AdminSalesImagesPage = lazy(() => import('../pages/admin/SalesImagesPage').then((m) => ({ default: m.default })));
 const AdminMembershipsPage = lazy(() => import('../pages/admin/MembershipsPage').then((m) => ({ default: m.default })));
 const AdminMembershipDetailPage = lazy(() => import('../pages/admin/MembershipDetailPage').then((m) => ({ default: m.default })));
 const AdminCustomersPage = lazy(() => import('../pages/admin/CustomersPage').then((m) => ({ default: m.default })));
@@ -32,14 +39,20 @@ const AdminLeadDetailPage = lazy(() => import('../pages/admin/LeadDetailPage').t
 const AdminAppointmentsPage = lazy(() => import('../pages/admin/AppointmentsPage').then((m) => ({ default: m.default })));
 const AdminSettlementsPage = lazy(() => import('../pages/admin/SettlementsPage').then((m) => ({ default: m.default })));
 const AdminLoyaltyPage = lazy(() => import('../pages/admin/LoyaltyPage').then((m) => ({ default: m.default })));
+const AdminLoyaltyDetailPage = lazy(() => import('../pages/admin/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const AdminSettingsPage = lazy(() => import('../pages/admin/SettingsPage').then((m) => ({ default: m.default })));
 const AdminProfilePage = lazy(() => import('../pages/admin/ProfilePage').then((m) => ({ default: m.default })));
+const AdminTicketsPage = lazy(() => import('../pages/admin/TicketsPage').then((m) => ({ default: m.default })));
+const AdminTicketDetailPage = lazy(() => import('../pages/admin/TicketDetailPage').then((m) => ({ default: m.default })));
+const LazyGuidelinesPage = lazy(() => import('../pages/GuidelinesPage').then((m) => ({ default: m.default })));
 
 // Vendor pages – lazy loaded
 const VendorDashboardPage = lazy(() => import('../pages/vendor/VendorDashboardPage').then((m) => ({ default: m.default })));
 const VendorBranchesPage = lazy(() => import('../pages/vendor/BranchesPage').then((m) => ({ default: m.default })));
 const VendorSalesPage = lazy(() => import('../pages/vendor/SalesPage').then((m) => ({ default: m.default })));
+const VendorSalesImagesPage = lazy(() => import('../pages/vendor/SalesImagesPage').then((m) => ({ default: m.default })));
 const VendorMembershipsPage = lazy(() => import('../pages/vendor/MembershipsPage').then((m) => ({ default: m.default })));
+const VendorPackagesPage = lazy(() => import('../pages/vendor/PackagesPage').then((m) => ({ default: m.default })));
 const VendorMembershipDetailPage = lazy(() => import('../pages/vendor/MembershipDetailPage').then((m) => ({ default: m.default })));
 const VendorCustomersPage = lazy(() => import('../pages/vendor/CustomersPage').then((m) => ({ default: m.default })));
 const VendorSearchPage = lazy(() => import('../pages/vendor/SearchPage').then((m) => ({ default: m.default })));
@@ -48,7 +61,10 @@ const VendorLeadDetailPage = lazy(() => import('../pages/vendor/LeadDetailPage')
 const VendorAppointmentsPage = lazy(() => import('../pages/vendor/AppointmentsPage').then((m) => ({ default: m.default })));
 const VendorSettlementsPage = lazy(() => import('../pages/vendor/SettlementsPage').then((m) => ({ default: m.default })));
 const VendorLoyaltyPage = lazy(() => import('../pages/vendor/LoyaltyPage').then((m) => ({ default: m.default })));
+const VendorLoyaltyDetailPage = lazy(() => import('../pages/vendor/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const VendorProfilePage = lazy(() => import('../pages/vendor/VendorProfilePage').then((m) => ({ default: m.default })));
+const VendorTicketsPage = lazy(() => import('../pages/vendor/TicketsPage').then((m) => ({ default: m.default })));
+const VendorTicketDetailPage = lazy(() => import('../pages/vendor/TicketDetailPage').then((m) => ({ default: m.default })));
 
 export function AppRoutes() {
   return (
@@ -73,11 +89,12 @@ export function AppRoutes() {
           }
         >
           <Route index element={<AdminDashboardPage />} />
-          <Route path="overview" element={<OwnerOverviewPage />} />
+          <Route path="overview" element={<Navigate to={ROUTES.admin.sales} replace />} />
           <Route path="vendors" element={<AdminVendorsPage />} />
           <Route path="create-vendor" element={<AdminCreateVendorPage />} />
           <Route path="branches" element={<AdminBranchesPage />} />
           <Route path="sales" element={<AdminSalesPage />} />
+          <Route path="sales-images" element={<AdminSalesImagesPage />} />
           <Route path="memberships" element={<AdminMembershipsPage />} />
           <Route path="memberships/:id" element={<AdminMembershipDetailPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
@@ -91,8 +108,12 @@ export function AppRoutes() {
           <Route path="appointments" element={<AdminAppointmentsPage />} />
           <Route path="settlements" element={<AdminSettlementsPage />} />
           <Route path="loyalty" element={<AdminLoyaltyPage />} />
+          <Route path="loyalty/:id" element={<AdminLoyaltyDetailPage />} />
+          <Route path="guidelines" element={<LazyGuidelinesPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="profile" element={<AdminProfilePage />} />
+          <Route path="tickets" element={<AdminTicketsPage />} />
+          <Route path="tickets/:id" element={<AdminTicketDetailPage />} />
         </Route>
 
         {/* Vendor routes */}
@@ -108,19 +129,25 @@ export function AppRoutes() {
             <Route index element={<VendorDashboardPage />} />
             <Route path="branches" element={<VendorBranchesPage />} />
             <Route path="sales" element={<VendorSalesPage />} />
+            <Route path="sales-images" element={<VendorSalesImagesPage />} />
             <Route path="memberships" element={<VendorMembershipsPage />} />
             <Route path="memberships/:id" element={<VendorMembershipDetailPage />} />
             <Route path="customers" element={<VendorCustomersPage />} />
             <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="customers/:id/memberships" element={<CustomerMembershipsPage />} />
             <Route path="customers/:id/appointments" element={<CustomerAppointmentsPage />} />
+            <Route path="packages" element={<VendorPackagesPage />} />
             <Route path="search" element={<VendorSearchPage />} />
             <Route path="leads" element={<VendorLeadsPage />} />
             <Route path="leads/:id" element={<VendorLeadDetailPage />} />
             <Route path="appointments" element={<VendorAppointmentsPage />} />
             <Route path="settlements" element={<VendorSettlementsPage />} />
             <Route path="loyalty" element={<VendorLoyaltyPage />} />
+            <Route path="loyalty/:id" element={<VendorLoyaltyDetailPage />} />
             <Route path="profile" element={<VendorProfilePage />} />
+            <Route path="guidelines" element={<LazyGuidelinesPage />} />
+            <Route path="tickets" element={<VendorTicketsPage />} />
+            <Route path="tickets/:id" element={<VendorTicketDetailPage />} />
           </Route>
         </Route>
 

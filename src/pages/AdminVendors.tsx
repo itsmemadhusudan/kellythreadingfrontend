@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getVendors, getVendor, approveVendor, rejectVendor, updateVendor, blockVendor, setVendorActive } from '../api/vendors';
+import { getVendors, getVendor, approveVendor, rejectVendor, updateVendor, blockVendor, setVendorActive, updateVendorPassword, deleteVendor } from '../api/vendors';
 import { getBranches } from '../api/branches';
 import type { VendorListItem, ApprovalStatus } from '../types/auth';
 import type { Branch } from '../types/crm';
@@ -9,7 +9,7 @@ type FilterStatus = 'all' | ApprovalStatus;
 export default function AdminVendors() {
   const [vendors, setVendors] = useState<VendorListItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [filter, setFilter] = useState<FilterStatus>('all');
+  const [filter] = useState<FilterStatus>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -28,6 +28,15 @@ export default function AdminVendors() {
   const [blockConfirmVendorId, setBlockConfirmVendorId] = useState<string | null>(null);
   const [blockConfirmInput, setBlockConfirmInput] = useState('');
   const [blockConfirmError, setBlockConfirmError] = useState('');
+  const [deleteConfirmVendorId, setDeleteConfirmVendorId] = useState<string | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deleteConfirmError, setDeleteConfirmError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   async function loadVendors() {
     setLoading(true);
@@ -48,6 +57,10 @@ export default function AdminVendors() {
     setVendorDetail(null);
     setEditingVendor(false);
     setEditError('');
+    setShowPasswordForm(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
   }, []);
 
   useEffect(() => {
@@ -87,6 +100,15 @@ export default function AdminVendors() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [blockConfirmVendorId]);
+
+  useEffect(() => {
+    if (!deleteConfirmVendorId) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeDeleteConfirm();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [deleteConfirmVendorId]);
 
   async function handleApprove(id: string) {
     setActioningId(id);
@@ -156,6 +178,35 @@ export default function AdminVendors() {
     } else setError(res.message || 'Failed to block');
   }
 
+  function openDeleteConfirm(id: string) {
+    setDeleteConfirmVendorId(id);
+    setDeleteConfirmInput('');
+    setDeleteConfirmError('');
+  }
+
+  function closeDeleteConfirm() {
+    setDeleteConfirmVendorId(null);
+    setDeleteConfirmInput('');
+    setDeleteConfirmError('');
+  }
+
+  async function handleDeleteConfirmOk() {
+    if (!deleteConfirmVendorId) return;
+    if (deleteConfirmInput.trim() !== 'CONFIRM') {
+      setDeleteConfirmError('Type CONFIRM exactly to proceed.');
+      return;
+    }
+    setDeleteConfirmError('');
+    setDeletingId(deleteConfirmVendorId);
+    const res = await deleteVendor(deleteConfirmVendorId);
+    setDeletingId(null);
+    closeDeleteConfirm();
+    if (res.success) {
+      if (selectedVendor?.id === deleteConfirmVendorId) closeModal();
+      loadVendors();
+    } else setError(res.message || 'Failed to delete vendor');
+  }
+
   async function handleSetActive(id: string) {
     setBlockingId(id);
     setError('');
@@ -192,45 +243,36 @@ export default function AdminVendors() {
     }
   };
 
-  const pendingCount = filter === 'all' ? vendors.filter((v) => v.approvalStatus === 'pending').length : 0;
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVendor) return;
+    setPasswordError('');
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    setPasswordSaving(true);
+    const res = await updateVendorPassword(selectedVendor.id, newPassword);
+    setPasswordSaving(false);
+    if (res.success) {
+      setShowPasswordForm(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } else {
+      setPasswordError(res.message || 'Failed to update password.');
+    }
+  };
 
   return (
     <div className="dashboard-content">
       <section className="content-card">
         <div className="vendors-header">
-          <h2>Vendor management</h2>
-          <p className="vendors-subtitle">Approve vendors and assign each vendor to a branch. Vendors only see data for their assigned branch.</p>
-        </div>
-
-        <div className="vendors-filters">
-          <button
-            type="button"
-            className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
-            onClick={() => setFilter('pending')}
-          >
-            Pending {filter === 'all' && pendingCount > 0 ? `(${pendingCount})` : ''}
-          </button>
-          <button
-            type="button"
-            className={`filter-btn ${filter === 'approved' ? 'active' : ''}`}
-            onClick={() => setFilter('approved')}
-          >
-            Approved
-          </button>
-          <button
-            type="button"
-            className={`filter-btn ${filter === 'rejected' ? 'active' : ''}`}
-            onClick={() => setFilter('rejected')}
-          >
-            Rejected
-          </button>
+          <h2>Staff management</h2>
+          <p className="vendors-subtitle">Assign each staff member to a branch. Staff only see data for their assigned branch.</p>
         </div>
 
         {error && <div className="auth-error vendors-error">{error}</div>}
@@ -249,7 +291,6 @@ export default function AdminVendors() {
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Vendor name</th>
                   <th>Branch</th>
                   <th>Approval</th>
                   <th>Blocked</th>
@@ -270,7 +311,6 @@ export default function AdminVendors() {
                       </button>
                     </td>
                     <td>{v.email}</td>
-                    <td>{v.vendorName || '—'}</td>
                     <td>
                       <select
                         value={v.branchId ?? ''}
@@ -434,6 +474,44 @@ export default function AdminVendors() {
                   </button>
                 </div>
               </form>
+            ) : showPasswordForm ? (
+              <form onSubmit={handleUpdatePassword} className="vendor-modal-edit-form">
+                <p className="text-muted" style={{ marginBottom: '1rem' }}>
+                  Set a new password for this staff member. They will use it to log in.
+                </p>
+                {passwordError && <div className="auth-error vendors-error">{passwordError}</div>}
+                <label className="auth-form-label">
+                  <span>New password</span>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => { setNewPassword(e.target.value); setPasswordError(''); }}
+                    className="appointment-form-input"
+                    placeholder="At least 6 characters"
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className="auth-form-label">
+                  <span>Confirm password</span>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(''); }}
+                    className="appointment-form-input"
+                    placeholder="Re-enter new password"
+                    autoComplete="new-password"
+                  />
+                </label>
+                <div className="vendor-modal-actions">
+                  <button type="button" className="filter-btn" onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword(''); setPasswordError(''); }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={passwordSaving}>
+                    {passwordSaving ? 'Updating…' : 'Update password'}
+                  </button>
+                </div>
+              </form>
             ) : vendorDetail ? (
               <>
                 <dl className="vendor-detail-dl">
@@ -467,6 +545,13 @@ export default function AdminVendors() {
                     onClick={() => setEditingVendor(true)}
                   >
                     Edit vendor
+                  </button>
+                  <button
+                    type="button"
+                    className="filter-btn"
+                    onClick={() => { setShowPasswordForm(true); setNewPassword(''); setConfirmPassword(''); setPasswordError(''); }}
+                  >
+                    Update password
                   </button>
                   {vendorDetail.approvalStatus === 'pending' && (
                     <>
@@ -507,6 +592,15 @@ export default function AdminVendors() {
                       {blockingId === vendorDetail.id ? '…' : 'Block'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="btn-reject"
+                    onClick={() => openDeleteConfirm(vendorDetail.id)}
+                    disabled={deletingId !== null}
+                    title="Permanently delete this staff member"
+                  >
+                    {deletingId === vendorDetail.id ? '…' : 'Delete'}
+                  </button>
                 </div>
               </>
             ) : (
@@ -575,6 +669,73 @@ export default function AdminVendors() {
                     disabled={blockConfirmInput.trim() !== 'CONFIRM'}
                   >
                     Block user
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmVendorId && (
+        <div
+          className="vendor-modal-backdrop block-confirm-backdrop"
+          onClick={closeDeleteConfirm}
+          role="presentation"
+        >
+          <div
+            className="vendor-modal block-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+            aria-describedby="delete-confirm-desc"
+          >
+            <div className="vendor-modal-header block-confirm-header">
+              <h2 id="delete-confirm-title">Confirm delete</h2>
+              <button
+                type="button"
+                className="vendor-modal-close"
+                onClick={closeDeleteConfirm}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="block-confirm-body">
+              <p id="delete-confirm-desc" className="block-confirm-message">
+                This will permanently delete this staff member. They will be removed and cannot be restored. Type <strong>CONFIRM</strong> below to proceed.
+              </p>
+              <form onSubmit={(e) => { e.preventDefault(); handleDeleteConfirmOk(); }}>
+                <label className="block-confirm-label">
+                  <span className="block-confirm-label-text">Type CONFIRM</span>
+                  <input
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => { setDeleteConfirmInput(e.target.value); setDeleteConfirmError(''); }}
+                    className={`block-confirm-input ${deleteConfirmInput.trim() === 'CONFIRM' ? 'block-confirm-input-valid' : ''} ${deleteConfirmError ? 'block-confirm-input-error' : ''}`}
+                    placeholder="CONFIRM"
+                    autoComplete="off"
+                    autoFocus
+                    aria-invalid={!!deleteConfirmError}
+                    aria-describedby={deleteConfirmError ? 'delete-confirm-err' : undefined}
+                  />
+                </label>
+                {deleteConfirmError && (
+                  <p id="delete-confirm-err" className="block-confirm-error" role="alert">
+                    {deleteConfirmError}
+                  </p>
+                )}
+                <div className="block-confirm-actions">
+                  <button type="button" className="block-confirm-cancel" onClick={closeDeleteConfirm}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="block-confirm-ok"
+                    disabled={deleteConfirmInput.trim() !== 'CONFIRM' || deletingId !== null}
+                  >
+                    {deletingId === deleteConfirmVendorId ? 'Deleting…' : 'Delete user'}
                   </button>
                 </div>
               </form>

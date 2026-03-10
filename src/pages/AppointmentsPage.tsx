@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getAppointments, createAppointment, updateAppointment } from '../api/appointments';
 import { getBranches } from '../api/branches';
 import { getCustomers } from '../api/customers';
 import { getServices } from '../api/services';
+import { getSettings } from '../api/settings';
 import { useBranch } from '../hooks/useBranch';
+import { ROUTES } from '../config/constants';
 import type { Appointment, Branch, Customer, Service } from '../types/crm';
 
 function loadList(
@@ -37,6 +40,10 @@ export default function AppointmentsPage() {
   const [formError, setFormError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [importingAppointments, setImportingAppointments] = useState(false);
+  const [importAppointmentsResult, setImportAppointmentsResult] = useState<{ ok: number; fail: number; skipped: number } | null>(null);
+  const [importBranchId, setImportBranchId] = useState('');
+  const [showImportButton, setShowImportButton] = useState(true);
   const PAGE_SIZE = 10;
 
   const effectiveBranchId = isAdmin ? (branchId || undefined) : (userBranchId || undefined);
@@ -50,9 +57,10 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     if (isAdmin) {
-      getBranches().then((r) => { if (r.success && r.branches) setBranches(r.branches); });
-    } else if (userBranchId) {
-      setBranchId(userBranchId);
+      getBranches({ all: true }).then((r) => { if (r.success && r.branches) setBranches(r.branches || []); });
+    } else {
+      if (userBranchId) setBranchId(userBranchId);
+      getBranches().then((r) => { if (r.success && r.branches) setBranches(r.branches || []); });
     }
   }, [isAdmin, userBranchId]);
 
@@ -63,6 +71,24 @@ export default function AppointmentsPage() {
   useEffect(() => {
     setPage(1);
   }, [date, effectiveBranchId]);
+
+  useEffect(() => {
+    if (!isAdmin && userBranchId) setImportBranchId(userBranchId);
+  }, [isAdmin, userBranchId]);
+
+  useEffect(() => {
+    if (isAdmin && branches.length > 0 && !importBranchId) {
+      setImportBranchId(branchId || branches[0].id);
+    }
+  }, [isAdmin, branches, branchId, importBranchId]);
+
+  useEffect(() => {
+    getSettings().then((r) => {
+      if (r.success && r.settings && typeof r.settings.showImportButton === 'boolean') {
+        setShowImportButton(r.settings.showImportButton);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!bookOpen) return;
@@ -135,6 +161,95 @@ export default function AppointmentsPage() {
     });
   }, [refetch]);
 
+  function extractAppointmentRows(parsed: unknown): Record<string, unknown>[] {
+    if (Array.isArray(parsed)) {
+      const tableObj = parsed.find((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const t = item as { type?: string; name?: string; data?: unknown[] };
+        return t.type === 'table' && Array.isArray(t.data) && (t.name === 'appointments' || !t.name);
+      });
+      if (tableObj) return ((tableObj as { data: Record<string, unknown>[] }).data) || [];
+      const anyTable = parsed.find((item) => item && typeof item === 'object' && (item as { type?: string }).type === 'table' && Array.isArray((item as { data?: unknown[] }).data));
+      if (anyTable) return (anyTable as { data: Record<string, unknown>[] }).data;
+      return parsed.filter((r) => r && typeof r === 'object' && (r as Record<string, unknown>).user_id != null) as Record<string, unknown>[];
+    }
+    if (parsed && typeof parsed === 'object') {
+      const o = parsed as Record<string, unknown>;
+      if (Array.isArray(o.data)) return (o.data as Record<string, unknown>[]).filter((r) => r && typeof r === 'object');
+      if (o.user_id != null || o.date != null) return [o];
+    }
+    return [];
+  }
+
+  async function handleImportAppointmentsFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const branchIdToUse = isAdmin ? (importBranchId || branchId || branches[0]?.id) : (userBranchId || undefined);
+    if (!branchIdToUse) {
+      setError('Please select a branch in "Import to branch" before importing. Branches may still be loading.');
+      return;
+    }
+    setError('');
+    setImportAppointmentsResult(null);
+    setImportingAppointments(true);
+    let ok = 0, fail = 0, skipped = 0;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const rawRows = extractAppointmentRows(parsed);
+      if (rawRows.length === 0) {
+        setError('No appointment data found. Expected PHPMyAdmin export for appointments or { data: [...] }. Import customers first.');
+        setImportingAppointments(false);
+        return;
+      }
+      const customerLegacyMap: Record<string, string> = JSON.parse(localStorage.getItem('customerLegacyIdMap') || '{}');
+      const appointmentLegacyMap: Record<string, string> = JSON.parse(localStorage.getItem('appointmentLegacyIdMap') || '{}');
+      const str = (v: unknown) => (v != null && v !== '' ? String(v).trim() : '');
+      for (const row of rawRows) {
+        const oldUserId = str(row.user_id);
+        const customerId = customerLegacyMap[oldUserId];
+        if (!customerId) {
+          skipped++;
+          continue;
+        }
+        const dateStr = str(row.date);
+        if (!dateStr) {
+          skipped++;
+          continue;
+        }
+        const scheduledAt = new Date(`${dateStr}T09:00:00`).toISOString();
+        const title = str(row.title);
+        const description = str(row.description);
+        const notes = [title, description].filter(Boolean).join('\n') || undefined;
+        const res = await createAppointment({
+          customerId,
+          branchId: branchIdToUse,
+          scheduledAt,
+          notes,
+        });
+        const oldId = str(row.id);
+        if (res.success && (res as unknown as { appointment?: { id?: string } }).appointment?.id && oldId) {
+          appointmentLegacyMap[oldId] = (res as unknown as { appointment: { id: string } }).appointment.id;
+          ok++;
+        } else {
+          fail++;
+        }
+      }
+      if (Object.keys(appointmentLegacyMap).length > 0) {
+        localStorage.setItem('appointmentLegacyIdMap', JSON.stringify(appointmentLegacyMap));
+      }
+      setImportAppointmentsResult({ ok, fail, skipped });
+      if (ok > 0) refetch();
+      if (skipped > 0 && ok === 0 && fail === 0) {
+        setError('Import customers first: appointment user_id must map to customer id via customerLegacyIdMap.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid JSON');
+    }
+    setImportingAppointments(false);
+  }
+
   const completed = appointments.filter((a) => a.status === 'completed').length;
   const pending = appointments.filter((a) => ['pending', 'scheduled', 'confirmed', 'accepted'].includes(a.status)).length;
   const canChangeStatus = isAdmin;
@@ -177,7 +292,48 @@ export default function AppointmentsPage() {
               aria-label="Appointment date"
             />
           </label>
+          {showImportButton && (
+            <div className="appointments-import-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label className="appointments-date-label" style={{ margin: 0 }}>
+                <span className="appointments-date-label-text">Import to branch</span>
+                <select
+                  value={importBranchId}
+                  onChange={(e) => setImportBranchId(e.target.value)}
+                  className="filter-btn appointments-select"
+                  aria-label="Import to branch"
+                >
+                  <option value="">Select branch</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="memberships-import-btn" style={{ margin: 0, cursor: importingAppointments ? 'not-allowed' : 'pointer' }}>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="memberships-import-input"
+                  aria-label="Import appointments from JSON"
+                  onChange={handleImportAppointmentsFile}
+                  disabled={importingAppointments}
+                />
+                {importingAppointments ? 'Importing…' : 'Import appointments (JSON)'}
+              </label>
+            </div>
+          )}
         </div>
+        {importAppointmentsResult && (
+          <div className="memberships-import-result" role="status" style={{ marginTop: '0.75rem' }}>
+            <p className="memberships-import-success">
+              Appointments import: <strong>{importAppointmentsResult.ok}</strong> created, {importAppointmentsResult.fail} failed, {importAppointmentsResult.skipped} skipped (customer not in map).
+            </p>
+            {importAppointmentsResult.ok === 0 && importAppointmentsResult.fail === 0 && importAppointmentsResult.skipped > 0 && (
+              <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                Go to <Link to={isAdmin ? ROUTES.admin.customers : ROUTES.vendor.customers} style={{ color: 'var(--theme-link)', textDecoration: 'underline' }}>Customers</Link>, use Import (JSON), and import your PHPMyAdmin customers export. The export must include the <code>id</code> column so we can map <code>user_id</code> in appointments to new customer IDs. Then return here and import appointments again.
+              </p>
+            )}
+          </div>
+        )}
         {!loading && appointments.length > 0 && (
           <p className="appointments-stats">
             <span className="appointments-stat">{appointments.length} total</span>
@@ -224,37 +380,50 @@ export default function AppointmentsPage() {
                     </td>
                     {canChangeStatus && (
                       <td>
-                        {['pending', 'scheduled', 'confirmed', 'accepted'].includes(a.status) && (
-                          <div className="appointments-row-actions">
+                        <div className="appointments-row-actions">
+                          {['pending', 'scheduled', 'confirmed', 'accepted'].includes(a.status) && (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-approve appointments-action-btn"
+                                onClick={() => handleStatusChange(a.id, 'accepted')}
+                                disabled={updatingId !== null}
+                                title="Accept"
+                              >
+                                {updatingId === a.id ? '…' : 'Accept'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-primary appointments-action-btn"
+                                onClick={() => handleStatusChange(a.id, 'completed')}
+                                disabled={updatingId !== null}
+                                title="Mark completed"
+                              >
+                                Complete
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-reject appointments-action-btn"
+                                onClick={() => handleStatusChange(a.id, 'rejected')}
+                                disabled={updatingId !== null}
+                                title="Reject"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {(a.status === 'accepted' || a.status === 'rejected' || a.status === 'completed') && (
                             <button
                               type="button"
-                              className="btn-approve appointments-action-btn"
-                              onClick={() => handleStatusChange(a.id, 'accepted')}
+                              className="filter-btn appointments-action-btn"
+                              onClick={() => handleStatusChange(a.id, 'pending')}
                               disabled={updatingId !== null}
-                              title="Accept"
+                              title="Set to pending"
                             >
-                              {updatingId === a.id ? '…' : 'Accept'}
+                              {updatingId === a.id ? '…' : 'Pending'}
                             </button>
-                            <button
-                              type="button"
-                              className="btn-primary appointments-action-btn"
-                              onClick={() => handleStatusChange(a.id, 'completed')}
-                              disabled={updatingId !== null}
-                              title="Mark completed"
-                            >
-                              Complete
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-reject appointments-action-btn"
-                              onClick={() => handleStatusChange(a.id, 'rejected')}
-                              disabled={updatingId !== null}
-                              title="Reject"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
