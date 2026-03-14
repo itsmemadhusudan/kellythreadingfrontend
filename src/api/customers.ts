@@ -2,14 +2,16 @@ import { apiRequest } from './client';
 import type { Customer } from '../types/crm';
 
 export async function getCustomers(): Promise<{ success: boolean; customers?: Customer[]; message?: string }> {
-  const r = await apiRequest<{ customers: Customer[] }>('/customers?limit=10000');
+  // Fetch up to 20k customers so large accounts can see more than 10k in the UI.
+  const r = await apiRequest<{ customers: Customer[] }>('/customers?limit=20000');
   if (r.success && 'customers' in r) return { success: true, customers: (r as { customers: Customer[] }).customers };
   return { success: false, message: (r as { message?: string }).message };
 }
 
 /** All customers in the system for name search/dropdown (e.g. Add customer form) */
 export async function getCustomersForDropdown(): Promise<{ success: boolean; customers?: (Customer & { primaryBranchId?: string | null })[]; message?: string }> {
-  const r = await apiRequest<{ customers: (Customer & { primaryBranchId?: string | null })[] }>('/customers?forDropdown=1&limit=10000');
+  // Dropdowns also allow up to 20k, but UI should still rely on search for performance.
+  const r = await apiRequest<{ customers: (Customer & { primaryBranchId?: string | null })[] }>('/customers?forDropdown=1&limit=20000');
   if (r.success && 'customers' in r) return { success: true, customers: (r as { customers: (Customer & { primaryBranchId?: string | null })[] }).customers };
   return { success: false, message: (r as { message?: string }).message };
 }

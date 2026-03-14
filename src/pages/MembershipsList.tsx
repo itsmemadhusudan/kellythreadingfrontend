@@ -41,7 +41,7 @@ export default function MembershipsList() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; createdCustomers: number; errors: { row: number; message: string }[] } | null>(null);
   const [sessionsImporting, setSessionsImporting] = useState(false);
-  const [sessionsImportResult, setSessionsImportResult] = useState<{ ok: number; fail: number; skipped: number } | null>(null);
+  const [sessionsImportResult, setSessionsImportResult] = useState<{ ok: number; fail: number; skipped: number; missingMembershipIds?: Set<string>; missingBranchIds?: Set<string> } | null>(null);
   const [showImportButton, setShowImportButton] = useState(true);
   const [showBulkDeleteMembershipsToAdmin, setShowBulkDeleteMembershipsToAdmin] = useState(false);
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<Set<string>>(() => new Set());
@@ -532,18 +532,25 @@ export default function MembershipsList() {
       const membershipMap: Record<string, string> = JSON.parse(localStorage.getItem('membershipLegacyIdMap') || '{}');
       const branchMap: Record<string, string> = JSON.parse(localStorage.getItem('branchLegacyIdMap') || '{}');
       const str = (v: unknown) => (v != null && v !== '' ? String(v).trim() : '');
+      const missingMembershipIds = new Set<string>();
+      const missingBranchIds = new Set<string>();
       for (const row of rawRows) {
         const oldMembershipId = str(row.membership_id);
         const oldBranchId = str(row.branch_id);
         const creditsUsed = parseInt(str(row.no_of_sessions ?? row.credits_used ?? row.creditsUsed), 10) || 1;
         const ourMembershipId = membershipMap[oldMembershipId];
         const ourBranchId = branchMap[oldBranchId];
-        if (!ourMembershipId || !ourBranchId) { skipped++; continue; }
+        if (!ourMembershipId || !ourBranchId) {
+          skipped++;
+          if (!ourMembershipId && oldMembershipId) missingMembershipIds.add(oldMembershipId);
+          if (!ourBranchId && oldBranchId) missingBranchIds.add(oldBranchId);
+          continue;
+        }
         const res = await recordMembershipUsage(ourMembershipId, { creditsUsed, usedAtBranchId: ourBranchId });
         if (res.success) ok++;
         else fail++;
       }
-      setSessionsImportResult({ ok, fail, skipped });
+      setSessionsImportResult({ ok, fail, skipped, missingMembershipIds, missingBranchIds });
       if (ok > 0) {
         getMemberships({ branchId: branchId || undefined, status: status || undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }).then((r) => {
           if (r.success && 'memberships' in r) setMemberships((r as { memberships: Membership[] }).memberships);
@@ -897,6 +904,27 @@ export default function MembershipsList() {
             <p className="memberships-import-success">
               Sessions import: <strong>{sessionsImportResult.ok}</strong> recorded, {sessionsImportResult.fail} failed, {sessionsImportResult.skipped} skipped (membership or branch not in map).
             </p>
+            {sessionsImportResult.skipped > 0 && (
+              <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.9 }}>
+                {sessionsImportResult.missingMembershipIds && sessionsImportResult.missingMembershipIds.size > 0 && (
+                  <p style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                    Missing membership IDs: {Array.from(sessionsImportResult.missingMembershipIds).slice(0, 20).join(', ')}
+                    {sessionsImportResult.missingMembershipIds.size > 20 && ` … and ${sessionsImportResult.missingMembershipIds.size - 20} more`}
+                    {' '}({sessionsImportResult.missingMembershipIds.size} total unique)
+                  </p>
+                )}
+                {sessionsImportResult.missingBranchIds && sessionsImportResult.missingBranchIds.size > 0 && (
+                  <p style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                    Missing branch IDs: {Array.from(sessionsImportResult.missingBranchIds).slice(0, 20).join(', ')}
+                    {sessionsImportResult.missingBranchIds.size > 20 && ` … and ${sessionsImportResult.missingBranchIds.size - 20} more`}
+                    {' '}({sessionsImportResult.missingBranchIds.size} total unique)
+                  </p>
+                )}
+                <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.85rem', fontStyle: 'italic' }}>
+                  To fix: Import the missing memberships/branches from your legacy database exports. The IDs shown above are the old legacy IDs that need to be mapped.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -1067,6 +1095,46 @@ export default function MembershipsList() {
                 <span className="pagination-info">
                   Page {currentPage} of {totalPages}
                 </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="memberships-page-input" style={{ fontSize: '0.9rem', opacity: 0.9 }}>Go to:</label>
+                  <input
+                    key={`page-input-${currentPage}`}
+                    id="memberships-page-input"
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    defaultValue={currentPage}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                        setPage(val);
+                      } else {
+                        e.target.value = String(currentPage);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt((e.target as HTMLInputElement).value, 10);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setPage(val);
+                          (e.target as HTMLInputElement).blur();
+                        } else {
+                          (e.target as HTMLInputElement).value = String(currentPage);
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '60px',
+                      padding: '0.4rem 0.5rem',
+                      fontSize: '0.9rem',
+                      border: '1px solid var(--theme-border)',
+                      borderRadius: '4px',
+                      background: 'var(--theme-bg)',
+                      color: 'var(--theme-text)',
+                    }}
+                    aria-label="Page number"
+                  />
+                </div>
                 <button
                   type="button"
                   className="pagination-btn"

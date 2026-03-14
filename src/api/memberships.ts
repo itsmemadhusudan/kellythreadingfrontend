@@ -15,6 +15,8 @@ export async function getMemberships(params?: { branchId?: string; customerId?: 
   if (params?.status) q.set('status', params.status);
   if (params?.dateFrom) q.set('dateFrom', params.dateFrom);
   if (params?.dateTo) q.set('dateTo', params.dateTo);
+  // Fetch up to 40k memberships so large accounts can see all records in the list.
+  q.set('limit', '40000');
   const query = q.toString();
   return apiRequest<{ memberships: Membership[] }>(`/memberships${query ? `?${query}` : ''}`);
 }

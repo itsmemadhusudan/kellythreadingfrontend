@@ -412,6 +412,46 @@ export default function BranchesPage() {
                 <div className="customers-pagination">
                   <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label="Previous page">Previous</button>
                   <span className="pagination-info">Page {currentPage} of {totalPages}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label htmlFor="branches-page-input" style={{ fontSize: '0.9rem', opacity: 0.9 }}>Go to:</label>
+                    <input
+                      key={`page-input-${currentPage}`}
+                      id="branches-page-input"
+                      type="number"
+                      min="1"
+                      max={totalPages}
+                      defaultValue={currentPage}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setPage(val);
+                        } else {
+                          e.target.value = String(currentPage);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const val = parseInt((e.target as HTMLInputElement).value, 10);
+                          if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                            setPage(val);
+                            (e.target as HTMLInputElement).blur();
+                          } else {
+                            (e.target as HTMLInputElement).value = String(currentPage);
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '60px',
+                        padding: '0.4rem 0.5rem',
+                        fontSize: '0.9rem',
+                        border: '1px solid var(--theme-border)',
+                        borderRadius: '4px',
+                        background: 'var(--theme-bg)',
+                        color: 'var(--theme-text)',
+                      }}
+                      aria-label="Page number"
+                    />
+                  </div>
                   <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label="Next page">Next</button>
                 </div>
               )}
