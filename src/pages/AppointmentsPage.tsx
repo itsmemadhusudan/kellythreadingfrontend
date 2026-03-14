@@ -30,6 +30,8 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [branchId, setBranchId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -103,9 +105,27 @@ export default function AppointmentsPage() {
   const [formTime, setFormTime] = useState('09:00');
   const [formNotes, setFormNotes] = useState('');
 
+  const filteredCustomers = customers.filter((c) => {
+    if (!customerSearch.trim()) return true;
+    const term = customerSearch.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(term) ||
+      (c.phone && c.phone.toLowerCase().includes(term)) ||
+      (c.email && c.email.toLowerCase().includes(term))
+    );
+  });
+
+  const handleSelectCustomer = (c: Customer) => {
+    setFormCustomerId(c.id);
+    setCustomerSearch(c.name + (c.phone ? ` (${c.phone})` : ''));
+    setShowCustomerSuggestions(false);
+  };
+
   const openBook = () => {
     setFormError('');
     setFormCustomerId('');
+    setCustomerSearch('');
+    setShowCustomerSuggestions(false);
     setFormBranchId(effectiveBranchId || '');
     setFormServiceId('');
     setFormDate(new Date().toISOString().slice(0, 10));
@@ -461,19 +481,66 @@ export default function AppointmentsPage() {
             </div>
             <form onSubmit={handleBookSubmit} className="appointment-book-form">
               {formError && <div className="auth-error vendors-error">{formError}</div>}
-              <label className="auth-form-label">
+              <label className="auth-form-label" style={{ position: 'relative' }}>
                 <span>Customer *</span>
-                <select
-                  value={formCustomerId}
-                  onChange={(e) => setFormCustomerId(e.target.value)}
-                  className="appointments-select appointment-form-input"
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value);
+                    setShowCustomerSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (filteredCustomers.length > 0) setShowCustomerSuggestions(true);
+                  }}
+                  className="appointment-form-input"
+                  placeholder="Type to search customer by name, phone or email"
                   required
-                >
-                  <option value="">Select customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-                  ))}
-                </select>
+                />
+                {showCustomerSuggestions && filteredCustomers.length > 0 && (
+                  <div
+                    className="customers-suggestions-dropdown"
+                    style={{
+                      position: 'absolute',
+                      zIndex: 20,
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      maxHeight: '220px',
+                      overflowY: 'auto',
+                      background: 'var(--theme-bg-elevated, #020617)',
+                      borderRadius: 8,
+                      marginTop: 4,
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                      border: '1px solid rgba(148, 163, 184, 0.3)',
+                    }}
+                  >
+                    {filteredCustomers.slice(0, 20).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="customers-suggestion-item"
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem 0.75rem',
+                          textAlign: 'left',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'inherit',
+                        }}
+                      >
+                        <div style={{ fontWeight: 500 }}>{c.name}</div>
+                        {(c.phone || c.email) && (
+                          <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                            {[c.phone, c.email].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </label>
               {isAdmin && (
                 <label className="auth-form-label">

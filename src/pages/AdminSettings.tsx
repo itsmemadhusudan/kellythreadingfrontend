@@ -40,6 +40,7 @@ export default function AdminSettings() {
   const [showBulkDeleteBranchesToAdmin, setShowBulkDeleteBranchesToAdmin] = useState<boolean>(false);
   const [showBulkDeletePackagesToAdmin, setShowBulkDeletePackagesToAdmin] = useState<boolean>(false);
   const [showBulkDeleteMembershipsToAdmin, setShowBulkDeleteMembershipsToAdmin] = useState<boolean>(false);
+  const [showBulkSettleSettlementsToAdmin, setShowBulkSettleSettlementsToAdmin] = useState<boolean>(false);
   const [passwordCurrent, setPasswordCurrent] = useState('');
   const [passwordNew, setPasswordNew] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -85,6 +86,7 @@ export default function AdminSettings() {
         setShowBulkDeleteBranchesToAdmin(r.settings.showBulkDeleteBranchesToAdmin === true);
         setShowBulkDeletePackagesToAdmin(r.settings.showBulkDeletePackagesToAdmin === true);
         setShowBulkDeleteMembershipsToAdmin(r.settings.showBulkDeleteMembershipsToAdmin === true);
+        setShowBulkSettleSettlementsToAdmin(r.settings.showBulkSettleSettlementsToAdmin === true);
       }
     });
   }, []);
@@ -384,6 +386,7 @@ export default function AdminSettings() {
       showBulkDeleteBranchesToAdmin,
       showBulkDeletePackagesToAdmin,
       showBulkDeleteMembershipsToAdmin,
+      showBulkSettleSettlementsToAdmin,
     });
     setBulkDeleteTogglesSaving(false);
     setMessageType(r.success ? 'success' : 'error');
@@ -667,17 +670,18 @@ export default function AdminSettings() {
           </div>
 
           <div className="settings-block settings-block-divider">
-            <h3 className="settings-block-heading">Admin bulk delete buttons</h3>
-            <p className="settings-block-desc">Show or hide bulk select + delete controls on admin list pages.</p>
+            <h3 className="settings-block-heading">Admin bulk actions</h3>
+            <p className="settings-block-desc">Show or hide bulk select + delete/settle controls on admin list pages.</p>
             {settingsLoading ? (
               <p className="text-muted">Loading...</p>
             ) : (
               <form onSubmit={handleSaveBulkDeleteToggles} className="settings-form">
                 <div className="settings-checkbox-group">
                   <span className="settings-checkbox-legend">Pages</span>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteBranchesToAdmin} onChange={(e) => setShowBulkDeleteBranchesToAdmin(e.target.checked)} /><span>Branches</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeletePackagesToAdmin} onChange={(e) => setShowBulkDeletePackagesToAdmin(e.target.checked)} /><span>Packages</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteMembershipsToAdmin} onChange={(e) => setShowBulkDeleteMembershipsToAdmin(e.target.checked)} /><span>Memberships</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteBranchesToAdmin} onChange={(e) => setShowBulkDeleteBranchesToAdmin(e.target.checked)} /><span>Branches – bulk delete</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeletePackagesToAdmin} onChange={(e) => setShowBulkDeletePackagesToAdmin(e.target.checked)} /><span>Packages – bulk delete</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteMembershipsToAdmin} onChange={(e) => setShowBulkDeleteMembershipsToAdmin(e.target.checked)} /><span>Memberships – bulk delete</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkSettleSettlementsToAdmin} onChange={(e) => setShowBulkSettleSettlementsToAdmin(e.target.checked)} /><span>Settlements – bulk mark settled</span></label>
                 </div>
                 <button type="submit" className="settings-btn settings-btn-primary" disabled={bulkDeleteTogglesSaving}>
                   {bulkDeleteTogglesSaving ? 'Saving…' : 'Save bulk delete settings'}

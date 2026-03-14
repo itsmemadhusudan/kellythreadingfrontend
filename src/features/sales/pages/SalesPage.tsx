@@ -48,12 +48,15 @@ export default function SalesPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailBreakdownPage, setDetailBreakdownPage] = useState(1);
   const [breakdownPage] = useState(1);
+  const [settlementPage, setSettlementPage] = useState(1);
+  const [branchPerfPage, setBranchPerfPage] = useState(1);
 
   // Manual sales – dashboard level (for Total Sales calc) and branch details
   const [dashboardManualSales, setDashboardManualSales] = useState<ManualSale[]>([]);
   const [dashboardManualSalesLoading, setDashboardManualSalesLoading] = useState(false);
   const [manualSales, setManualSales] = useState<ManualSale[]>([]);
   const [manualSalesLoading, setManualSalesLoading] = useState(false);
+  const [manualSalesPage, setManualSalesPage] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
   const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [addAmount, setAddAmount] = useState('');
@@ -165,6 +168,13 @@ export default function SalesPage() {
       appointmentsCompleted: ov?.appointmentsCompleted ?? 0,
     };
   });
+  const BRANCH_PERF_PAGE_SIZE = 10;
+  const branchPerfTotalPages = Math.max(1, Math.ceil(mergedByBranch.length / BRANCH_PERF_PAGE_SIZE));
+  const branchPerfCurrentPage = Math.min(Math.max(1, branchPerfPage), branchPerfTotalPages);
+  const paginatedBranchPerf = mergedByBranch.slice(
+    (branchPerfCurrentPage - 1) * BRANCH_PERF_PAGE_SIZE,
+    branchPerfCurrentPage * BRANCH_PERF_PAGE_SIZE
+  );
 
   const totalMemberships = mergedByBranch.reduce((s, b) => s + (b.membershipCount ?? 0), 0);
   const totalAppointments = overview.reduce((s, b) => s + b.appointmentsThisMonth, 0);
@@ -176,6 +186,14 @@ export default function SalesPage() {
       : 0;
   const totalManualSalesAmount = dashboardManualSales.reduce((s, m) => s + (m.amount ?? 0), 0);
   const totalSales = membershipSales + totalManualSalesAmount;
+
+  const MANUAL_SALES_PAGE_SIZE = 10;
+  const manualSalesTotalPages = Math.max(1, Math.ceil(manualSales.length / MANUAL_SALES_PAGE_SIZE));
+  const manualSalesCurrentPage = Math.min(Math.max(1, manualSalesPage), manualSalesTotalPages);
+  const paginatedManualSales = manualSales.slice(
+    (manualSalesCurrentPage - 1) * MANUAL_SALES_PAGE_SIZE,
+    manualSalesCurrentPage * MANUAL_SALES_PAGE_SIZE
+  );
 
   async function handleAddSale(e: React.FormEvent) {
     e.preventDefault();
@@ -363,7 +381,9 @@ export default function SalesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {settlementSummary.map((s, i) => (
+                  {settlementSummary
+                    .slice((settlementPage - 1) * 10, settlementPage * 10)
+                    .map((s, i) => (
                     <tr key={i}>
                       <td>{s.fromBranch}</td>
                       <td>{s.toBranch}</td>
@@ -375,6 +395,31 @@ export default function SalesPage() {
                 </tbody>
               </table>
             </div>
+            {settlementSummary.length > 10 && (
+              <div className="customers-pagination">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setSettlementPage((p) => Math.max(1, p - 1))}
+                  disabled={settlementPage <= 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </button>
+                <span className="pagination-info">
+                  Page {settlementPage} of {Math.max(1, Math.ceil(settlementSummary.length / 10))}
+                </span>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setSettlementPage((p) => Math.min(Math.max(1, Math.ceil(settlementSummary.length / 10)), p + 1))}
+                  disabled={settlementPage >= Math.ceil(settlementSummary.length / 10)}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -391,7 +436,7 @@ export default function SalesPage() {
             {isAdmin && mergedByBranch.length > 0 ? (
               <>
                 <div className="sales-performance-mobile-cards">
-                  {mergedByBranch.map((row) => (
+                  {paginatedBranchPerf.map((row) => (
                     <div key={row.branch} className="sales-mobile-card">
                       <div className="sales-mobile-card-row">
                         <span className="sales-mobile-label">Branch</span>
@@ -430,7 +475,7 @@ export default function SalesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mergedByBranch.map((row) => (
+                      {paginatedBranchPerf.map((row) => (
                         <tr key={row.branch}>
                           <td>
                             {row.branchId ? (
@@ -454,6 +499,31 @@ export default function SalesPage() {
                     </tbody>
                   </table>
                 </div>
+                {branchPerfTotalPages > 1 && (
+                  <div className="customers-pagination">
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setBranchPerfPage((p) => Math.max(1, p - 1))}
+                      disabled={branchPerfCurrentPage <= 1}
+                      aria-label="Previous page"
+                    >
+                      Previous
+                    </button>
+                    <span className="pagination-info">
+                      Page {branchPerfCurrentPage} of {branchPerfTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={() => setBranchPerfPage((p) => Math.min(branchPerfTotalPages, p + 1))}
+                      disabled={branchPerfCurrentPage >= branchPerfTotalPages}
+                      aria-label="Next page"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </>
             ) : !isAdmin && data && (data.breakdown?.length ?? 0) > 0 ? (
               <>
@@ -603,7 +673,7 @@ export default function SalesPage() {
                   ) : (
                     <>
                       <div className="sales-manual-mobile-cards">
-                        {manualSales.map((s) => (
+                        {paginatedManualSales.map((s) => (
                           <div key={s.id} className="sales-mobile-card">
                             <div className="sales-mobile-card-row">
                               <span className="sales-mobile-label">Date</span>
@@ -650,7 +720,7 @@ export default function SalesPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {manualSales.map((s) => (
+                            {paginatedManualSales.map((s) => (
                               <tr key={s.id}>
                                 <td>
                                   <button type="button" className="branch-name-link" onClick={() => s.hasImage && handleViewImage(s.id)} title={s.hasImage ? 'Click to view receipt' : undefined}>
@@ -684,6 +754,31 @@ export default function SalesPage() {
                           </tbody>
                         </table>
                       </div>
+                      {manualSales.length > MANUAL_SALES_PAGE_SIZE && (
+                        <div className="customers-pagination">
+                          <button
+                            type="button"
+                            className="pagination-btn"
+                            onClick={() => setManualSalesPage((p) => Math.max(1, p - 1))}
+                            disabled={manualSalesCurrentPage <= 1}
+                            aria-label="Previous page"
+                          >
+                            Previous
+                          </button>
+                          <span className="pagination-info">
+                            Page {manualSalesCurrentPage} of {manualSalesTotalPages}
+                          </span>
+                          <button
+                            type="button"
+                            className="pagination-btn"
+                            onClick={() => setManualSalesPage((p) => Math.min(manualSalesTotalPages, p + 1))}
+                            disabled={manualSalesCurrentPage >= manualSalesTotalPages}
+                            aria-label="Next page"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

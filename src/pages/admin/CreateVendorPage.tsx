@@ -14,19 +14,14 @@ export default function CreateVendorPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [lastUpdatedVendor, setLastUpdatedVendor] = useState<VendorListItem | null>(null);
+  const [recentVendors, setRecentVendors] = useState<VendorListItem[]>([]);
 
-  const loadLastUpdatedVendor = () => {
-    getVendors().then((r) => {
+  const loadRecentVendors = () => {
+    getVendors(undefined, 5).then((r) => {
       if (r.success && r.vendors && r.vendors.length > 0) {
-        const sorted = [...r.vendors].sort((a, b) => {
-          const aDate = a.updatedAt || a.createdAt || '';
-          const bDate = b.updatedAt || b.createdAt || '';
-          return bDate.localeCompare(aDate);
-        });
-        setLastUpdatedVendor(sorted[0]);
+        setRecentVendors(r.vendors.slice(0, 5));
       } else {
-        setLastUpdatedVendor(null);
+        setRecentVendors([]);
       }
     });
   };
@@ -36,7 +31,7 @@ export default function CreateVendorPage() {
   }, []);
 
   useEffect(() => {
-    loadLastUpdatedVendor();
+    loadRecentVendors();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -67,7 +62,7 @@ export default function CreateVendorPage() {
       setVendorName('');
       setBranchId('');
       setSuccess('Vendor/Staff account created. They can now log in with this email and password and will be redirected to the vendor dashboard.');
-      loadLastUpdatedVendor();
+      loadRecentVendors();
     } else {
       setError(res.message || 'Failed to create vendor.');
     }
@@ -114,19 +109,31 @@ export default function CreateVendorPage() {
         </form>
       </section>
 
-      {lastUpdatedVendor && (
+      {recentVendors.length > 0 && (
         <section className="content-card" style={{ marginTop: '1.5rem' }}>
-          <h3 style={{ marginTop: 0, fontSize: '1.1rem' }}>Last updated vendor</h3>
-          <dl className="vendor-detail-dl" style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.25rem 1.5rem', maxWidth: '420px' }}>
-            <dt style={{ color: 'var(--theme-text-muted, #6b7280)' }}>Name</dt>
-            <dd style={{ margin: 0 }}>{lastUpdatedVendor.name || '—'}</dd>
-            <dt style={{ color: 'var(--theme-text-muted, #6b7280)' }}>Email</dt>
-            <dd style={{ margin: 0 }}>{lastUpdatedVendor.email || '—'}</dd>
-            <dt style={{ color: 'var(--theme-text-muted, #6b7280)' }}>Display name</dt>
-            <dd style={{ margin: 0 }}>{lastUpdatedVendor.vendorName || '—'}</dd>
-            <dt style={{ color: 'var(--theme-text-muted, #6b7280)' }}>Branch</dt>
-            <dd style={{ margin: 0 }}>{lastUpdatedVendor.branchName || '— No branch'}</dd>
-          </dl>
+          <h3 style={{ marginTop: 0, fontSize: '1.1rem' }}>Last updated vendors</h3>
+          <div className="vendors-table-wrap" style={{ marginTop: '0.75rem' }}>
+            <table className="vendors-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Display name</th>
+                  <th>Branch</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentVendors.map((v) => (
+                  <tr key={v.id}>
+                    <td>{v.name || '—'}</td>
+                    <td>{v.email || '—'}</td>
+                    <td>{v.vendorName || '—'}</td>
+                    <td>{v.branchName || '— No branch'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>

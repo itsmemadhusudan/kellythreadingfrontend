@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { getSettlements, updateSettlement, type SettlementSummaryRow } from '../../../api/reports';
+import { getSettlements, updateSettlement, bulkSettleSettlements, type SettlementSummaryRow } from '../../../api/reports';
 import { createCustomer, getCustomersForDropdown } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
+import { getSettings } from '../../../api/settings';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { formatCurrency } from '../../../utils/money';
 import type { Settlement } from '../../../types/common';
@@ -38,6 +39,9 @@ export default function SettlementReportPage() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
+  const [settings, setSettings] = useState<{ showBulkSettleSettlementsToAdmin?: boolean } | null>(null);
+  const [selectedSettlementIds, setSelectedSettlementIds] = useState<Set<string>>(() => new Set());
+  const [bulkSettling, setBulkSettling] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
@@ -71,6 +75,13 @@ export default function SettlementReportPage() {
   }, [fetchSettlements]);
 
   useEffect(() => {
+    if (!isAdmin) return;
+    getSettings().then((r) => {
+      if (r.success && r.settings) setSettings(r.settings as { showBulkSettleSettlementsToAdmin?: boolean });
+    });
+  }, [isAdmin]);
+
+  useEffect(() => {
     getBranches({ all: true }).then((r) => r.success && r.branches && setBranches(r.branches || []));
   }, []);
 
@@ -102,6 +113,7 @@ export default function SettlementReportPage() {
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const paginatedSettlements = filteredSettlements.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const canBulkSettle = isAdmin && settings?.showBulkSettleSettlementsToAdmin;
 
   useEffect(() => {
     setPage(1);
@@ -112,6 +124,43 @@ export default function SettlementReportPage() {
     .reduce((sum, s) => sum + (typeof s.amount === 'number' ? s.amount : 0), 0);
   const pendingCount = settlements.filter((s) => (s.status || '').toLowerCase() === 'pending').length;
   const settledCount = settlements.filter((s) => (s.status || '').toLowerCase() === 'settled').length;
+
+  const toggleSelected = (id: string) => {
+    setSelectedSettlementIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedSettlementIds(new Set());
+
+  const selectAllCurrentPage = () => {
+    // Select ALL pending settlements in the current filtered result set, not just the current page.
+    setSelectedSettlementIds(
+      new Set(
+        filteredSettlements
+          .filter((s) => (s.status || '').toLowerCase() === 'pending')
+          .map((s) => String(s.id))
+      )
+    );
+  };
+
+  const handleBulkSettle = async () => {
+    if (!canBulkSettle || selectedSettlementIds.size === 0) return;
+    setBulkSettling(true);
+    const ids = Array.from(selectedSettlementIds);
+    const r = await bulkSettleSettlements(ids);
+    setBulkSettling(false);
+    if (!r.success) {
+      // eslint-disable-next-line no-alert
+      alert(r.message || 'Failed to mark settlements as settled.');
+      return;
+    }
+    clearSelection();
+    fetchSettlements();
+  };
 
   async function handleMarkSettled(id: string) {
     setMarkingId(id);
@@ -423,14 +472,37 @@ export default function SettlementReportPage() {
             ) : (
               <>
                 {totalFiltered > 0 && (
-                  <p className="customers-showing-count text-muted">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalFiltered)} of {totalFiltered} entr{totalFiltered !== 1 ? 'ies' : 'y'}
-                  </p>
+                  <div className="settlements-toolbar">
+                    <p className="customers-showing-count text-muted">
+                      Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalFiltered)} of {totalFiltered} entr{totalFiltered !== 1 ? 'ies' : 'y'}
+                    </p>
+                    {canBulkSettle && (
+                      <div className="settlements-bulk-actions">
+                        <button
+                          type="button"
+                          className="filter-btn"
+                          onClick={selectAllCurrentPage}
+                          disabled={paginatedSettlements.length === 0}
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="customers-export-btn"
+                          onClick={handleBulkSettle}
+                          disabled={selectedSettlementIds.size === 0 || bulkSettling}
+                        >
+                          {bulkSettling ? 'Marking…' : `Mark all selected settled (${selectedSettlementIds.size})`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="data-table-wrap settlements-table-wrap">
                   <table className="data-table settlements-table">
                     <thead>
                       <tr>
+                        {canBulkSettle && <th style={{ width: '1%' }} aria-label="Select column" />}
                         <th>From branch</th>
                         <th>To branch</th>
                         <th className="num">Amount</th>
@@ -443,6 +515,18 @@ export default function SettlementReportPage() {
                     <tbody>
                       {paginatedSettlements.map((s) => (
                       <tr key={s.id}>
+                        {canBulkSettle && (
+                          <td>
+                            {(s.status || '').toLowerCase() === 'pending' ? (
+                              <input
+                                type="checkbox"
+                                aria-label={`Select settlement from ${s.fromBranch} to ${s.toBranch}`}
+                                checked={selectedSettlementIds.has(String(s.id))}
+                                onChange={() => toggleSelected(String(s.id))}
+                              />
+                            ) : null}
+                          </td>
+                        )}
                         <td>{s.fromBranch}</td>
                         <td>{s.toBranch}</td>
                         <td className="num">{typeof s.amount === 'number' ? formatCurrency(s.amount) : s.amount}</td>

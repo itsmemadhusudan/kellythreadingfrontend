@@ -38,10 +38,25 @@ export default function AdminPackagesPage() {
   const [bulkDeleteMessage, setBulkDeleteMessage] = useState('');
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [bulkDeleteConfirmText, setBulkDeleteConfirmText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const PAGE_SIZE = 10;
-  const totalPages = Math.max(1, Math.ceil(packages.length / PAGE_SIZE));
-  const currentPage = Math.min(Math.max(1, page), totalPages);
-  const paginatedPackages = packages.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const { filteredPackages, totalPages, currentPage, paginatedPackages } = useMemo(() => {
+    const searchLower = searchQuery.trim().toLowerCase();
+    const filtered = searchLower
+      ? packages.filter((p) => {
+          const name = (p.name || '').toLowerCase();
+          const sessions = String(p.totalSessions ?? '').toLowerCase();
+          const status = p.isActive === false ? 'inactive' : 'active';
+          return name.includes(searchLower) || sessions.includes(searchLower) || status.includes(searchLower);
+        })
+      : packages;
+    const total = filtered.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const current = Math.min(Math.max(1, page), pages);
+    const paginated = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+    return { filteredPackages: filtered, totalPages: pages, currentPage: current, paginatedPackages: paginated };
+  }, [packages, searchQuery, page, PAGE_SIZE]);
 
   const loadPackages = useCallback(() => {
     getPackages(isAdmin).then((r) => {
@@ -80,8 +95,8 @@ export default function AdminPackagesPage() {
   const clearSelection = useCallback(() => setSelectedPackageIds(new Set()), []);
 
   const selectAll = useCallback(() => {
-    setSelectedPackageIds(new Set(packages.map((p) => String(p.id))));
-  }, [packages]);
+    setSelectedPackageIds(new Set(filteredPackages.map((p) => String(p.id))));
+  }, [filteredPackages]);
 
   useEffect(() => {
     if (!canBulkDelete && selectedPackageIds.size > 0) clearSelection();
@@ -411,9 +426,21 @@ export default function AdminPackagesPage() {
       <section className="content-card packages-page-table-card">
         {packages.length > 0 ? (
           <>
-            <p className="packages-page-count text-muted">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, packages.length)} of {packages.length} package{packages.length !== 1 ? 's' : ''}
-            </p>
+            <div className="packages-page-header-row">
+              <p className="packages-page-count text-muted">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredPackages.length)} of {filteredPackages.length} package{filteredPackages.length !== 1 ? 's' : ''}
+              </p>
+              <div className="packages-page-search">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                  placeholder="Search packages by name, sessions, or status…"
+                  className="settings-input"
+                  style={{ maxWidth: 260 }}
+                />
+              </div>
+            </div>
             {/* Mobile: card list */}
             <div className="packages-mobile-cards">
               {editingId && isAdmin && (
@@ -588,9 +615,65 @@ export default function AdminPackagesPage() {
             </div>
             {totalPages > 1 && (
               <div className="customers-pagination">
-                <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label="Previous page">Previous</button>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </button>
                 <span className="pagination-info">Page {currentPage} of {totalPages}</span>
-                <button type="button" className="pagination-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label="Next page">Next</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="packages-page-input" style={{ fontSize: '0.9rem', opacity: 0.9 }}>Go to:</label>
+                  <input
+                    key={`packages-page-input-${currentPage}`}
+                    id="packages-page-input"
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    defaultValue={currentPage}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                        setPage(val);
+                      } else {
+                        e.target.value = String(currentPage);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt((e.target as HTMLInputElement).value, 10);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setPage(val);
+                          (e.target as HTMLInputElement).blur();
+                        } else {
+                          (e.target as HTMLInputElement).value = String(currentPage);
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '60px',
+                      padding: '0.4rem 0.5rem',
+                      fontSize: '0.9rem',
+                      border: '1px solid var(--theme-border)',
+                      borderRadius: '4px',
+                      background: 'var(--theme-bg)',
+                      color: 'var(--theme-text)',
+                    }}
+                    aria-label="Page number"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
               </div>
             )}
           </>

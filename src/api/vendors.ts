@@ -30,8 +30,14 @@ export async function createVendor(data: {
   return { success: false, message: (result as { message?: string }).message };
 }
 
-export async function getVendors(status?: 'pending' | 'approved' | 'rejected'): Promise<VendorsResponse> {
-  const query = status ? `?status=${status}` : '';
+export async function getVendors(
+  status?: 'pending' | 'approved' | 'rejected',
+  limit?: number
+): Promise<VendorsResponse> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (typeof limit === 'number') params.set('limit', String(limit));
+  const query = params.toString() ? `?${params.toString()}` : '';
   const result = await apiRequest<{ vendors: VendorListItem[] }>(`/vendors${query}`);
   if (result.success && 'vendors' in result) {
     return { success: true, vendors: (result as { vendors: VendorListItem[] }).vendors };

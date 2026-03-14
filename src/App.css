@@ -7863,7 +7863,8 @@
 
 .sales-kpis-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  /* Slightly wider KPI cards so long currency values don't overlap */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1.25rem;
   margin-bottom: 0.75rem;
 }
@@ -7879,9 +7880,11 @@
 }
 
 .sales-kpi-value {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--theme-text-heading);
+  /* Allow long currency values to wrap to a second line instead of truncating */
+  word-break: break-all;
 }
 
 .sales-kpi-highlight .sales-kpi-value {

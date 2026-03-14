@@ -28,6 +28,8 @@ export default function LoyaltyPage() {
   const [repeatedCustomers, setRepeatedCustomers] = useState<RepeatedCustomer[]>([]);
   const [membershipUpgraders, setMembershipUpgraders] = useState<MembershipUpgrader[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [membersPage, setMembersPage] = useState(1);
+  const [visitsPage, setVisitsPage] = useState(1);
 
   const debouncedQuery = useDebounce(query, 300);
 
@@ -43,6 +45,21 @@ export default function LoyaltyPage() {
       })
       .catch(() => setInsightsLoading(false));
   }, []);
+
+  const PAGE_SIZE = 15;
+  const membersTotalPages = Math.max(1, Math.ceil(membershipUpgraders.length / PAGE_SIZE));
+  const membersCurrentPage = Math.min(Math.max(1, membersPage), membersTotalPages);
+  const paginatedMembershipUpgraders = membershipUpgraders.slice(
+    (membersCurrentPage - 1) * PAGE_SIZE,
+    membersCurrentPage * PAGE_SIZE
+  );
+
+  const visitsTotalPages = Math.max(1, Math.ceil(repeatedCustomers.length / PAGE_SIZE));
+  const visitsCurrentPage = Math.min(Math.max(1, visitsPage), visitsTotalPages);
+  const paginatedRepeatedCustomers = repeatedCustomers.slice(
+    (visitsCurrentPage - 1) * PAGE_SIZE,
+    visitsCurrentPage * PAGE_SIZE
+  );
 
   useEffect(() => {
     fetchInsights();
@@ -188,7 +205,7 @@ export default function LoyaltyPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {membershipUpgraders.map((row) => (
+                        {paginatedMembershipUpgraders.map((row) => (
                           <tr
                             key={row.customerId}
                             onClick={() => navigateToDetail(row.customerId, row.customerName)}
@@ -205,6 +222,31 @@ export default function LoyaltyPage() {
                         ))}
                       </tbody>
                     </table>
+                    {membershipUpgraders.length > PAGE_SIZE && (
+                      <div className="customers-pagination">
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                          disabled={membersCurrentPage <= 1}
+                          aria-label="Previous page"
+                        >
+                          Previous
+                        </button>
+                        <span className="pagination-info">
+                          Page {membersCurrentPage} of {membersTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setMembersPage((p) => Math.min(membersTotalPages, p + 1))}
+                          disabled={membersCurrentPage >= membersTotalPages}
+                          aria-label="Next page"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -237,7 +279,7 @@ export default function LoyaltyPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {repeatedCustomers.map((row) => (
+                        {paginatedRepeatedCustomers.map((row) => (
                           <tr
                             key={row.customerId}
                             onClick={() => navigateToDetail(row.customerId, row.customerName)}
@@ -254,6 +296,31 @@ export default function LoyaltyPage() {
                         ))}
                       </tbody>
                     </table>
+                    {repeatedCustomers.length > PAGE_SIZE && (
+                      <div className="customers-pagination">
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setVisitsPage((p) => Math.max(1, p - 1))}
+                          disabled={visitsCurrentPage <= 1}
+                          aria-label="Previous page"
+                        >
+                          Previous
+                        </button>
+                        <span className="pagination-info">
+                          Page {visitsCurrentPage} of {visitsTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setVisitsPage((p) => Math.min(visitsTotalPages, p + 1))}
+                          disabled={visitsCurrentPage >= visitsTotalPages}
+                          aria-label="Next page"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

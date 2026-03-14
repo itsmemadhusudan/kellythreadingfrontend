@@ -65,6 +65,7 @@ export default function SalesImagesPage() {
   const [uploadError, setUploadError] = useState('');
   const [dropActive, setDropActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
 
   const isAdmin = user?.role === 'admin';
   const canUpload = (user?.role === 'vendor' && user?.branchId) || (isAdmin && !!branchFilter);
@@ -108,6 +109,11 @@ export default function SalesImagesPage() {
       filteredImages: filtered,
     };
   }, [images, periodFilter, dateFrom, dateTo]);
+
+  const PAGE_SIZE = 20;
+  const totalPages = Math.max(1, Math.ceil(filteredImages.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const paginatedImages = filteredImages.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const fetchImages = useCallback(() => {
     setLoading(true);
@@ -593,7 +599,7 @@ export default function SalesImagesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredImages.map((img) => (
+              {paginatedImages.map((img) => (
                 <tr
                   key={img.id}
                   onClick={() => handleView(img.id)}
@@ -618,6 +624,31 @@ export default function SalesImagesPage() {
               ))}
             </tbody>
           </table>
+          {filteredImages.length > PAGE_SIZE && (
+            <div className="customers-pagination">
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                aria-label="Previous page"
+              >
+                Previous
+              </button>
+              <span className="pagination-info">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="pagination-btn"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                aria-label="Next page"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

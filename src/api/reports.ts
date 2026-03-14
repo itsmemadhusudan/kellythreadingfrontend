@@ -47,6 +47,18 @@ export async function updateSettlement(id: string, data: { status: string }): Pr
   return { success: false, message: (r as { message?: string }).message };
 }
 
+export async function bulkSettleSettlements(ids: string[]): Promise<{ success: boolean; updated?: number; message?: string }> {
+  const r = await apiRequest<{ updated: number }>('/reports/settlements/bulk-settle', {
+    method: 'PATCH',
+    body: JSON.stringify({ ids }),
+  });
+  if (r.success && 'updated' in r) {
+    const d = r as unknown as { updated: number };
+    return { success: true, updated: d.updated };
+  }
+  return { success: false, message: (r as { message?: string }).message };
+}
+
 export interface SettlementSummaryItem {
   fromBranch: string;
   toBranch: string;

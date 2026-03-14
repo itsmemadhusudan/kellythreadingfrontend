@@ -39,6 +39,8 @@ export interface SystemSettings {
   showBulkDeletePackagesToAdmin?: boolean;
   /** When true, Admin sees bulk delete controls on Memberships page. */
   showBulkDeleteMembershipsToAdmin?: boolean;
+  /** When true, Admin sees bulk settle controls on Settlements page. */
+  showBulkSettleSettlementsToAdmin?: boolean;
 }
 
 export async function getSettings(): Promise<{
@@ -76,6 +78,7 @@ export async function updateSettings(data: {
   showBulkDeleteBranchesToAdmin?: boolean;
   showBulkDeletePackagesToAdmin?: boolean;
   showBulkDeleteMembershipsToAdmin?: boolean;
+  showBulkSettleSettlementsToAdmin?: boolean;
 }): Promise<{
   success: boolean;
   settings?: SystemSettings;

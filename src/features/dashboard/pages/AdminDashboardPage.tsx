@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { getVendors } from '../../../api/vendors';
@@ -43,7 +44,7 @@ export default function AdminDashboardPage() {
   const [branchId] = useState('');
   const [totalVendors, setTotalVendors] = useState<number | null>(null);
   const [totalBranches, setTotalBranches] = useState<number | null>(null);
-  const [pendingVendors, setPendingVendors] = useState<number | null>(null);
+  const [, setPendingVendors] = useState<number | null>(null);
   const [salesData, setSalesData] = useState<SalesDashboard | null>(null);
   const [overview, setOverview] = useState<OwnerOverviewBranch[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -59,6 +60,9 @@ export default function AdminDashboardPage() {
   const [branchSalesLoading, setBranchSalesLoading] = useState(false);
   const [viewImageDetail, setViewImageDetail] = useState<SalesImageDetail | null>(null);
   const [viewImageIndex, setViewImageIndex] = useState(0);
+  const [branchOverviewPage, setBranchOverviewPage] = useState(1);
+  const [settlementsPage, setSettlementsPage] = useState(1);
+  const [branchOverviewSearch, setBranchOverviewSearch] = useState('');
 
   const loadSettlements = useCallback(() => {
     setSettlementsLoading(true);
@@ -124,12 +128,8 @@ export default function AdminDashboardPage() {
   }, [loadOverview, loadSettlements]);
 
   const loadBranchSales = useCallback(() => {
-    if (!selectedBranchId) {
-      setBranchSalesImages([]);
-      return;
-    }
     setBranchSalesLoading(true);
-    getSalesImages({ branchId: selectedBranchId })
+    getSalesImages(selectedBranchId ? { branchId: selectedBranchId } : undefined)
       .then((r) => {
         setBranchSalesLoading(false);
         if (r.success && r.images) setBranchSalesImages(r.images);
@@ -157,15 +157,47 @@ export default function AdminDashboardPage() {
 
   const chartMembershipByBranch = overview.map((o) => ({ name: o.branchName, memberships: o.membershipsSold })).filter((d) => d.memberships > 0 || overview.length <= 10);
   const totalLeads = overview.reduce((s, o) => s + (o.leads ?? 0), 0);
-  const totalAppointments = overview.reduce((s, o) => s + (o.appointmentsThisMonth ?? 0), 0);
-  const systemGrowthData = [
-    { name: 'Vendors', value: totalVendors ?? 0, fill: 'var(--theme-link)' },
-    { name: 'Branches', value: totalBranches ?? 0, fill: '#8b5cf6' },
-    { name: 'Active memberships', value: salesData?.activeMembershipCount ?? 0, fill: '#06b6d4' },
-    { name: 'Total leads', value: totalLeads, fill: '#f59e0b' },
-    { name: 'Appointments (month)', value: totalAppointments, fill: '#10b981' },
-    { name: 'Pending approvals', value: pendingVendors ?? 0, fill: '#ef4444' },
-  ].filter((d) => d.value > 0 || d.name === 'Vendors' || d.name === 'Branches');
+
+  const membershipGrowthData =
+    salesData?.dailySales?.map((d) => ({
+      date: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      sales: d.sales,
+    })) ?? [];
+
+  const TABLE_PAGE_SIZE = 10;
+
+  const salesByBranchMap = new Map<string, number>();
+  (salesData?.byBranch ?? []).forEach((b) => {
+    salesByBranchMap.set(b.branch, b.sales ?? 0);
+  });
+  const overviewWithSales = overview.map((o) => ({
+    ...o,
+    totalSales: salesByBranchMap.get(o.branchName) ?? 0,
+  }));
+
+  const branchOverviewSearchLower = branchOverviewSearch.trim().toLowerCase();
+  const filteredOverviewWithSales = branchOverviewSearchLower
+    ? overviewWithSales.filter((o) => o.branchName.toLowerCase().includes(branchOverviewSearchLower))
+    : overviewWithSales;
+
+  const branchOverviewTotalPages = Math.max(1, Math.ceil(filteredOverviewWithSales.length / TABLE_PAGE_SIZE));
+  const branchOverviewCurrentPage = Math.min(Math.max(1, branchOverviewPage), branchOverviewTotalPages);
+  const paginatedOverview = filteredOverviewWithSales.slice(
+    (branchOverviewCurrentPage - 1) * TABLE_PAGE_SIZE,
+    branchOverviewCurrentPage * TABLE_PAGE_SIZE
+  );
+
+  const settlementsTotalPages = Math.max(1, Math.ceil(settlements.length / TABLE_PAGE_SIZE));
+  const settlementsCurrentPage = Math.min(Math.max(1, settlementsPage), settlementsTotalPages);
+  const paginatedSettlements = settlements.slice(
+    (settlementsCurrentPage - 1) * TABLE_PAGE_SIZE,
+    settlementsCurrentPage * TABLE_PAGE_SIZE
+  );
+
+  const branchSalesTotalAmount = branchSalesImages.reduce(
+    (sum, img) => sum + (img.salesAmount != null && img.salesAmount > 0 ? img.salesAmount : 0),
+    0
+  );
 
   return (
     <div className="dashboard-content admin-dashboard">
@@ -238,30 +270,26 @@ export default function AdminDashboardPage() {
           )}
         </section>
         <section className="content-card admin-chart-card admin-chart-card-full">
-          <h3>System growth & platform overview</h3>
-          {(loading || overviewLoading) ? (
+          <h3>Membership growth (last 30 days)</h3>
+          {salesLoading ? (
             <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-          ) : systemGrowthData.length > 0 ? (
-            <div className="admin-chart-wrap admin-chart-wrap-horizontal">
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={systemGrowthData} margin={{ top: 12, right: 24, left: 12, bottom: 24 }} layout="vertical">
+          ) : membershipGrowthData.length > 0 ? (
+            <div className="admin-chart-wrap">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={membershipGrowthData} margin={{ top: 12, right: 24, left: 12, bottom: 24 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
-                  <XAxis type="number" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" width={120} tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
+                  <XAxis dataKey="date" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
                   <Tooltip
                     contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                    formatter={(value: number | undefined) => [formatNumber(value ?? 0), 'Count']}
+                    formatter={(value: number | undefined) => [formatCurrency(value ?? 0), 'Membership revenue']}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Count">
-                    {systemGrowthData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Line type="monotone" dataKey="sales" stroke="var(--theme-link)" strokeWidth={2} dot={false} name="Membership revenue" />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="admin-chart-empty">No platform data yet.</p>
+            <p className="admin-chart-empty">No membership growth data for this period.</p>
           )}
         </section>
       </div>
@@ -273,7 +301,18 @@ export default function AdminDashboardPage() {
         <section className="content-card admin-table-card admin-branch-perf-card">
           <div className="admin-table-header">
             <h3>Branch performance</h3>
-            <button type="button" className="admin-table-refresh" onClick={loadOverview}>↻</button>
+            <div className="admin-table-header-actions">
+              <input
+                type="text"
+                value={branchOverviewSearch}
+                onChange={(e) => { setBranchOverviewSearch(e.target.value); setBranchOverviewPage(1); }}
+                placeholder="Search branches…"
+                className="settings-input"
+                style={{ maxWidth: 220 }}
+                aria-label="Search branches"
+              />
+              <button type="button" className="admin-table-refresh" onClick={loadOverview}>↻</button>
+            </div>
           </div>
           <div className="admin-table-card-body">
           {overviewLoading ? (
@@ -281,7 +320,7 @@ export default function AdminDashboardPage() {
           ) : overview.length > 0 ? (
             <>
               <div className="admin-dashboard-mobile-cards admin-branch-perf-mobile">
-                {overview.map((row) => (
+                {paginatedOverview.map((row) => (
                   <div key={row.branchId} className="admin-dashboard-mobile-card">
                     <div className="admin-dashboard-mobile-card-row">
                       <span className="admin-dashboard-mobile-label">Branch</span>
@@ -290,6 +329,10 @@ export default function AdminDashboardPage() {
                     <div className="admin-dashboard-mobile-card-row">
                       <span className="admin-dashboard-mobile-label">Memberships sold</span>
                       <span className="admin-dashboard-mobile-value">{formatNumber(row.membershipsSold)}</span>
+                    </div>
+                    <div className="admin-dashboard-mobile-card-row">
+                      <span className="admin-dashboard-mobile-label">Total sales (period)</span>
+                      <span className="admin-dashboard-mobile-value">{formatCurrency(row.totalSales ?? 0)}</span>
                     </div>
                     <div className="admin-dashboard-mobile-card-row">
                       <span className="admin-dashboard-mobile-label">Leads / Booked / Appointments / Completed</span>
@@ -302,11 +345,12 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
               <div className="admin-table-wrap admin-branch-perf-table-wrap">
-                <table className="admin-table">
+                    <table className="admin-table">
                   <thead>
                     <tr>
                       <th>Branch</th>
                       <th>Memberships sold</th>
+                      <th>Total sales (period)</th>
                       <th>Leads</th>
                       <th>Booked</th>
                       <th>Appointments</th>
@@ -315,10 +359,11 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {overview.map((row) => (
+                    {paginatedOverview.map((row) => (
                       <tr key={row.branchId}>
                         <td><strong>{row.branchName}</strong></td>
                         <td>{formatNumber(row.membershipsSold)}</td>
+                        <td>{formatCurrency(row.totalSales ?? 0)}</td>
                         <td>{formatNumber(row.leads)}</td>
                         <td>{formatNumber(row.leadsBooked)}</td>
                         <td>{formatNumber(row.appointmentsThisMonth)}</td>
@@ -331,6 +376,31 @@ export default function AdminDashboardPage() {
                   </tbody>
                 </table>
               </div>
+              {branchOverviewTotalPages > 1 && (
+                <div className="customers-pagination">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setBranchOverviewPage((p) => Math.max(1, p - 1))}
+                    disabled={branchOverviewCurrentPage <= 1}
+                    aria-label="Previous page"
+                  >
+                    Previous
+                  </button>
+                  <span className="pagination-info">
+                    Page {branchOverviewCurrentPage} of {branchOverviewTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setBranchOverviewPage((p) => Math.min(branchOverviewTotalPages, p + 1))}
+                    disabled={branchOverviewCurrentPage >= branchOverviewTotalPages}
+                    aria-label="Next page"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="admin-chart-empty">No branch overview data.</p>
@@ -351,7 +421,7 @@ export default function AdminDashboardPage() {
           ) : settlements.length > 0 ? (
             <>
               <div className="admin-dashboard-mobile-cards admin-settlements-mobile">
-                {settlements.slice(0, 10).map((s) => (
+                {paginatedSettlements.map((s) => (
                   <div key={s.id} className="admin-dashboard-mobile-card">
                     <div className="admin-dashboard-mobile-card-row">
                       <span className="admin-dashboard-mobile-label">From → To</span>
@@ -378,7 +448,7 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {settlements.slice(0, 10).map((s) => (
+                    {paginatedSettlements.map((s) => (
                       <tr key={s.id}>
                         <td>{s.fromBranch} → {s.toBranch}</td>
                         <td>{formatCurrency(s.amount)}</td>
@@ -388,6 +458,31 @@ export default function AdminDashboardPage() {
                   </tbody>
                 </table>
               </div>
+              {settlementsTotalPages > 1 && (
+                <div className="customers-pagination">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setSettlementsPage((p) => Math.max(1, p - 1))}
+                    disabled={settlementsCurrentPage <= 1}
+                    aria-label="Previous page"
+                  >
+                    Previous
+                  </button>
+                  <span className="pagination-info">
+                    Page {settlementsCurrentPage} of {settlementsTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setSettlementsPage((p) => Math.min(settlementsTotalPages, p + 1))}
+                    disabled={settlementsCurrentPage >= settlementsTotalPages}
+                    aria-label="Next page"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="admin-chart-empty">No settlements yet. Settlements appear when branches use memberships sold by another branch.</p>
@@ -398,7 +493,7 @@ export default function AdminDashboardPage() {
           <div className="admin-table-header">
             <h3>Branch Sales Data</h3>
             <div className="admin-branch-sales-header">
-              <label htmlFor="admin-dashboard-branch-select" className="admin-branch-sales-label">Select a branch</label>
+              <label htmlFor="admin-dashboard-branch-select" className="admin-branch-sales-label">Branch filter</label>
               <select
                 id="admin-dashboard-branch-select"
                 value={selectedBranchId}
@@ -406,7 +501,7 @@ export default function AdminDashboardPage() {
                 className="admin-branch-sales-select"
                 aria-label="Select a branch"
               >
-                <option value="">Select a branch…</option>
+                <option value="">All branches</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
@@ -417,14 +512,15 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="admin-table-card-body">
-          {!selectedBranchId ? (
-            <p className="admin-chart-empty">Select a branch above to view its Sales Data.</p>
-          ) : branchSalesLoading ? (
+          {branchSalesLoading ? (
             <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
           ) : branchSalesImages.length === 0 ? (
             <p className="admin-chart-empty">No Sales Data for this branch.</p>
           ) : (
             <>
+              <p className="customers-showing-count text-muted">
+                Total amount{selectedBranchId ? ` for this branch` : ''}: <strong>{formatCurrency(branchSalesTotalAmount)}</strong>
+              </p>
               <div className="admin-dashboard-mobile-cards admin-branch-sales-mobile">
                 {branchSalesImages.map((img) => (
                   <div
