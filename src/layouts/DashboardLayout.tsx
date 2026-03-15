@@ -14,42 +14,54 @@ interface NavItem {
   to: string;
   label: string;
   icon?: string;
+  section?: string;
 }
 
 const ownerNav: NavItem[] = [
-  { to: ROUTES.admin.root, label: 'Dashboard', icon: '📊' },
-  { to: ROUTES.admin.sales, label: 'Sales dashboard', icon: '💰' },
-  { to: ROUTES.admin.vendors, label: 'Staff (assign branch)', icon: '👤' },
-  { to: ROUTES.admin.createVendor, label: 'Add new staff', icon: '➕' },
-  { to: ROUTES.admin.branches, label: 'Branches', icon: '📍' },
-  { to: ROUTES.admin.salesImages, label: 'Sales Data', icon: '🖼️' },
-  { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫' },
-  { to: ROUTES.admin.customers, label: 'Customers', icon: '👥' },
-  { to: ROUTES.admin.packages, label: 'Packages', icon: '📦' },
-  { to: ROUTES.admin.leads, label: 'Leads inbox', icon: '📥' },
-  { to: ROUTES.admin.appointments, label: 'Appointments', icon: '📅' },
-  { to: ROUTES.admin.settlements, label: 'Settlements', icon: '📋' },
-  { to: ROUTES.admin.loyalty, label: 'Loyalty', icon: '⭐' },
-  { to: ROUTES.admin.profile, label: 'My profile', icon: '👤' },
-  { to: ROUTES.admin.tickets, label: 'Tickets', icon: '🎫' },
-  { to: ROUTES.admin.guidelines, label: 'Guidelines', icon: '📄' },
-  { to: ROUTES.admin.settings, label: 'Settings', icon: '⚙️' },
+  // Overview
+  { to: ROUTES.admin.root, label: 'Dashboard', icon: '📊', section: 'Overview' },
+  { to: ROUTES.admin.sales, label: 'Sales dashboard', icon: '💰', section: 'Overview' },
+  // Staff & branches
+  { to: ROUTES.admin.vendors, label: 'Staff (assign branch)', icon: '👤', section: 'Staff & branches' },
+  { to: ROUTES.admin.createVendor, label: 'Add new staff', icon: '➕', section: 'Staff & branches' },
+  { to: ROUTES.admin.branches, label: 'Branches', icon: '📍', section: 'Staff & branches' },
+  // Business
+  { to: ROUTES.admin.salesImages, label: 'Sales Data', icon: '🖼️', section: 'Business' },
+  { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫', section: 'Business' },
+  { to: ROUTES.admin.customers, label: 'Customers', icon: '👥', section: 'Business' },
+  { to: ROUTES.admin.packages, label: 'Packages', icon: '📦', section: 'Business' },
+  { to: ROUTES.admin.leads, label: 'Leads inbox', icon: '📥', section: 'Business' },
+  { to: ROUTES.admin.appointments, label: 'Appointments', icon: '📅', section: 'Business' },
+  { to: ROUTES.admin.services, label: 'Services', icon: '✂️', section: 'Business' },
+  { to: ROUTES.admin.settlements, label: 'Settlements', icon: '📋', section: 'Business' },
+  { to: ROUTES.admin.loyalty, label: 'Loyalty', icon: '⭐', section: 'Business' },
+  // Account & system
+  { to: ROUTES.admin.profile, label: 'My profile', icon: '👤', section: 'Account & system' },
+  { to: ROUTES.admin.tickets, label: 'Tickets', icon: '🎫', section: 'Account & system' },
+  { to: ROUTES.admin.activityLog, label: 'Activity log', icon: '📋', section: 'Account & system' },
+  { to: ROUTES.admin.guidelines, label: 'Guidelines', icon: '📄', section: 'Account & system' },
+  { to: ROUTES.admin.settings, label: 'Settings', icon: '⚙️', section: 'Account & system' },
 ];
 
 const branchNav: NavItem[] = [
-  { to: ROUTES.vendor.root, label: 'Dashboard', icon: '📊' },
-  { to: ROUTES.vendor.sales, label: 'Sales', icon: '💰' },
-  { to: ROUTES.vendor.salesImages, label: 'Sales Data', icon: '🖼️' },
-  { to: ROUTES.vendor.memberships, label: 'Memberships', icon: '🎫' },
-  { to: ROUTES.vendor.customers, label: 'Customers', icon: '👥' },
-  { to: ROUTES.vendor.packages, label: 'Packages', icon: '📦' },
-  { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥' },
-  { to: ROUTES.vendor.appointments, label: 'Appointments', icon: '📅' },
-  { to: ROUTES.vendor.settlements, label: 'Settlements', icon: '📋' },
-  { to: ROUTES.vendor.loyalty, label: 'Loyalty', icon: '⭐' },
-  { to: ROUTES.vendor.profile, label: 'My profile', icon: '👤' },
-  { to: ROUTES.vendor.guidelines, label: 'Guidelines', icon: '📄' },
-  { to: ROUTES.vendor.tickets, label: 'Tickets', icon: '🎫' },
+  // Overview
+  { to: ROUTES.vendor.root, label: 'Dashboard', icon: '📊', section: 'Overview' },
+  { to: ROUTES.vendor.sales, label: 'Sales', icon: '💰', section: 'Overview' },
+  { to: ROUTES.vendor.salesImages, label: 'Sales Data', icon: '🖼️', section: 'Overview' },
+  // Business
+  { to: ROUTES.vendor.memberships, label: 'Memberships', icon: '🎫', section: 'Business' },
+  { to: ROUTES.vendor.customers, label: 'Customers', icon: '👥', section: 'Business' },
+  { to: ROUTES.vendor.packages, label: 'Packages', icon: '📦', section: 'Business' },
+  { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥', section: 'Business' },
+  { to: ROUTES.vendor.appointments, label: 'Appointments', icon: '📅', section: 'Business' },
+  { to: ROUTES.vendor.services, label: 'Services', icon: '✂️', section: 'Business' },
+  { to: ROUTES.vendor.settlements, label: 'Settlements', icon: '📋', section: 'Business' },
+  { to: ROUTES.vendor.loyalty, label: 'Loyalty', icon: '⭐', section: 'Business' },
+  // Account
+  { to: ROUTES.vendor.profile, label: 'My profile', icon: '👤', section: 'Account' },
+  { to: ROUTES.vendor.activityLog, label: 'Activity log', icon: '📋', section: 'Account' },
+  { to: ROUTES.vendor.guidelines, label: 'Guidelines', icon: '📄', section: 'Account' },
+  { to: ROUTES.vendor.tickets, label: 'Tickets', icon: '🎫', section: 'Account' },
 ];
 
 interface DashboardLayoutProps {

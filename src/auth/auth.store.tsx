@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import * as authApi from '../api/auth.api';
+import { clearApiCache } from '../api/client';
 import type { User, Role } from './auth.types';
 
 const TOKEN_KEY = 'token';
@@ -40,7 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   }, []);
 
-  const logout = useCallback(() => persistAuth(null, null), [persistAuth]);
+  const logout = useCallback(() => {
+    clearApiCache();
+    persistAuth(null, null);
+  }, [persistAuth]);
 
   const refreshUser = useCallback(async () => {
     if (!token) return;

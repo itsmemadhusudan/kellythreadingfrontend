@@ -33,6 +33,7 @@ export default function AdminPackagesPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
   const [showImportButton, setShowImportButton] = useState(true);
   const [showBulkDeletePackagesToAdmin, setShowBulkDeletePackagesToAdmin] = useState(false);
+  const [showPackageActionsToVendor, setShowPackageActionsToVendor] = useState(false);
   const [selectedPackageIds, setSelectedPackageIds] = useState<Set<string>>(() => new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteMessage, setBulkDeleteMessage] = useState('');
@@ -78,10 +79,14 @@ export default function AdminPackagesPage() {
       if (r.success && r.settings && typeof (r.settings as { showBulkDeletePackagesToAdmin?: boolean }).showBulkDeletePackagesToAdmin === 'boolean') {
         setShowBulkDeletePackagesToAdmin((r.settings as { showBulkDeletePackagesToAdmin: boolean }).showBulkDeletePackagesToAdmin);
       }
+      if (r.success && r.settings && typeof (r.settings as { showPackageActionsToVendor?: boolean }).showPackageActionsToVendor === 'boolean') {
+        setShowPackageActionsToVendor((r.settings as { showPackageActionsToVendor: boolean }).showPackageActionsToVendor);
+      }
     });
   }, []);
 
   const canBulkDelete = isAdmin && showBulkDeletePackagesToAdmin;
+  const canShowPackageActions = isAdmin || showPackageActionsToVendor;
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedPackageIds((prev) => {
@@ -224,6 +229,20 @@ export default function AdminPackagesPage() {
     setDeleteConfirmId(null);
     if (res.success) loadPackages();
     else setError((res as { message?: string }).message || 'Failed to delete');
+  }
+
+  async function handleActivate(id: string) {
+    setError('');
+    const res = await updatePackage(id, { isActive: true });
+    if (res.success) loadPackages();
+    else setError((res as { message?: string }).message || 'Failed to activate');
+  }
+
+  async function handleInactive(id: string) {
+    setError('');
+    const res = await updatePackage(id, { isActive: false });
+    if (res.success) loadPackages();
+    else setError((res as { message?: string }).message || 'Failed to deactivate');
   }
 
   function extractPackageRows(parsed: unknown): Record<string, unknown>[] {
@@ -443,7 +462,7 @@ export default function AdminPackagesPage() {
             </div>
             {/* Mobile: card list */}
             <div className="packages-mobile-cards">
-              {editingId && isAdmin && (
+              {editingId && canShowPackageActions && (
                 <div className="packages-mobile-edit-form">
                   <h3 className="packages-mobile-edit-title">Edit package</h3>
                   <form onSubmit={handleUpdate} className="packages-page-inline-form">
@@ -503,7 +522,7 @@ export default function AdminPackagesPage() {
                       </span>
                     </div>
                   </div>
-                  {p.isActive !== false && isAdmin && (
+                  {canShowPackageActions && (
                     <div className="package-mobile-card-actions">
                       <button
                         type="button"
@@ -512,6 +531,11 @@ export default function AdminPackagesPage() {
                       >
                         Edit
                       </button>
+                      {p.isActive === false ? (
+                        <button type="button" className="filter-btn packages-btn-activate" onClick={() => handleActivate(p.id)}>Activate</button>
+                      ) : (
+                        <button type="button" className="filter-btn packages-btn-inactive" onClick={() => handleInactive(p.id)}>Inactive</button>
+                      )}
                       {deleteConfirmId === p.id ? (
                         <>
                           <button type="button" className="filter-btn packages-btn-delete-confirm" onClick={() => handleDelete(p.id)}>Confirm delete</button>
@@ -543,7 +567,7 @@ export default function AdminPackagesPage() {
                 <tbody>
                   {paginatedPackages.map((p) => (
                     <tr key={p.id}>
-                      {editingId === p.id && isAdmin ? (
+                      {editingId === p.id && canShowPackageActions ? (
                         <td colSpan={canBulkDelete ? 8 : 7} className="packages-table-edit-cell">
                           <form onSubmit={handleUpdate} className="packages-page-inline-form">
                             <label><span>Name</span><input value={editName} onChange={(e) => setEditName(e.target.value)} required /></label>
@@ -592,9 +616,14 @@ export default function AdminPackagesPage() {
                             </span>
                           </td>
                           <td className="packages-table-actions">
-                            {p.isActive !== false && isAdmin && (
+                            {canShowPackageActions && (
                               <div className="packages-table-action-btns">
                                 <button type="button" className="filter-btn" onClick={() => { setEditingId(p.id); setEditName(p.name); setEditPrice(String(p.price)); setEditDiscountAmount((p.discountAmount ?? 0) > 0 ? String(p.discountAmount) : ''); setEditTotalSessions(String(p.totalSessions ?? 1)); setError(''); }}>Edit</button>
+                                {p.isActive === false ? (
+                                  <button type="button" className="filter-btn packages-btn-activate" onClick={() => handleActivate(p.id)}>Activate</button>
+                                ) : (
+                                  <button type="button" className="filter-btn packages-btn-inactive" onClick={() => handleInactive(p.id)}>Inactive</button>
+                                )}
                                 {deleteConfirmId === p.id ? (
                                   <>
                                     <button type="button" className="filter-btn packages-btn-delete-confirm" onClick={() => handleDelete(p.id)}>Confirm delete</button>

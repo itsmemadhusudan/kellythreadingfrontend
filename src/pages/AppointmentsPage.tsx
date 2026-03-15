@@ -498,44 +498,19 @@ export default function AppointmentsPage() {
                   required
                 />
                 {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                  <div
-                    className="customers-suggestions-dropdown"
-                    style={{
-                      position: 'absolute',
-                      zIndex: 20,
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      maxHeight: '220px',
-                      overflowY: 'auto',
-                      background: 'var(--theme-bg-elevated, #020617)',
-                      borderRadius: 8,
-                      marginTop: 4,
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-                      border: '1px solid rgba(148, 163, 184, 0.3)',
-                    }}
-                  >
+                  <div className="customers-suggestions-dropdown appointment-book-dropdown">
                     {filteredCustomers.slice(0, 20).map((c) => (
                       <button
                         key={c.id}
                         type="button"
                         onClick={() => handleSelectCustomer(c)}
                         className="customers-suggestion-item"
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem 0.75rem',
-                          textAlign: 'left',
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'inherit',
-                        }}
                       >
-                        <div style={{ fontWeight: 500 }}>{c.name}</div>
+                        <span className="customers-suggestion-name">{c.name}</span>
                         {(c.phone || c.email) && (
-                          <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                          <span className="customers-suggestion-meta">
                             {[c.phone, c.email].filter(Boolean).join(' · ')}
-                          </div>
+                          </span>
                         )}
                       </button>
                     ))}

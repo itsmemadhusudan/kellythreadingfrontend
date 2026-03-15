@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getLead, updateLead, addFollowUp } from '../../../api/leads';
+import { getLead, updateLead, addFollowUp, deleteLead } from '../../../api/leads';
 import { getLeadStatuses } from '../../../api/leadStatuses';
 import { getCustomers, createCustomer } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
@@ -35,6 +35,8 @@ export default function LeadDetailPage() {
   const [bookTime, setBookTime] = useState('09:00');
   const [bookServiceId, setBookServiceId] = useState('');
   const [bookNotes, setBookNotes] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
   const isAdmin = user?.role === 'admin';
 
@@ -154,6 +156,16 @@ export default function LeadDetailPage() {
     if (res.success) getLead(id).then((r) => r.success && 'lead' in r && setLead((r as { lead: Lead }).lead));
   }
 
+  async function handleDeleteLead() {
+    if (!id || !isAdmin) return;
+    setDeleting(true);
+    const res = await deleteLead(id);
+    setDeleting(false);
+    setDeleteConfirm(false);
+    if (res.success) navigate(`${basePath}/leads`);
+    else setError((res as { message?: string }).message || 'Failed to delete lead.');
+  }
+
   if (loading || !id) {
     return (
       <div className="dashboard-content">
@@ -177,9 +189,25 @@ export default function LeadDetailPage() {
         <button type="button" className="vendor-name-btn" style={{ marginBottom: '0.5rem' }} onClick={() => navigate(`${basePath}/leads`)}>← Back to leads</button>
         <div className="lead-detail-header-row">
           <h2>Lead: {lead!.name}</h2>
-          <button type="button" className="auth-submit lead-book-appointment-btn" onClick={openBookModal} disabled={!lead}>
-            Book Appointment
-          </button>
+          <div className="lead-detail-header-actions">
+            <button type="button" className="auth-submit lead-book-appointment-btn" onClick={openBookModal} disabled={!lead}>
+              Book Appointment
+            </button>
+            {isAdmin && (
+              deleteConfirm ? (
+                <span className="lead-delete-confirm">
+                  <button type="button" className="btn-reject" onClick={handleDeleteLead} disabled={deleting}>
+                    {deleting ? 'Deleting…' : 'Confirm delete'}
+                  </button>
+                  <button type="button" className="filter-btn" onClick={() => setDeleteConfirm(false)}>Cancel</button>
+                </span>
+              ) : (
+                <button type="button" className="btn-reject" onClick={() => setDeleteConfirm(true)}>
+                  Delete lead
+                </button>
+              )
+            )}
+          </div>
         </div>
         <dl className="vendor-detail-dl">
           <dt>Phone</dt>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getActivityLog } from '../../../api/activityLog';
+import type { ActivityLogItem } from '../../../api/activityLog';
 import {
   BarChart,
   Bar,
@@ -48,6 +50,10 @@ export default function VendorDashboardPage() {
 
   const [data, setData] = useState<BranchDashboardData | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
+  const [activityLogPage, setActivityLogPage] = useState(1);
+  const [activityLogTotalPages, setActivityLogTotalPages] = useState(1);
+  const [activityLogLoading, setActivityLogLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [customersLoading, setCustomersLoading] = useState(true);
@@ -79,6 +85,21 @@ export default function VendorDashboardPage() {
       if (r.success && r.customers) setCustomers(r.customers);
     }).catch(() => setCustomersLoading(false));
   }, []);
+
+  const loadActivityLog = useCallback(() => {
+    setActivityLogLoading(true);
+    getActivityLog({ page: activityLogPage, limit: 10 }).then((r) => {
+      setActivityLogLoading(false);
+      if (r.success && r.activities != null) {
+        setActivityLog(r.activities);
+        setActivityLogTotalPages(r.totalPages ?? 1);
+      }
+    });
+  }, [activityLogPage]);
+
+  useEffect(() => {
+    loadActivityLog();
+  }, [loadActivityLog]);
 
   if (loading && !data) {
     return (
@@ -227,6 +248,62 @@ export default function VendorDashboardPage() {
           {data.leadsToFollowUp.length > 10 && <p className="text-muted" style={{ marginTop: '0.5rem', marginBottom: 0 }}>+ {data.leadsToFollowUp.length - 10} more — <Link to={ROUTES.vendor.leads}>View all</Link></p>}
         </section>
       )}
+
+      <section className="content-card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h3 className="vendor-dashboard-section-title" style={{ margin: 0 }}>My activity</h3>
+          <Link to={ROUTES.vendor.activityLog} className="filter-btn">View all →</Link>
+        </div>
+        {activityLogLoading ? (
+          <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
+        ) : activityLog.length === 0 ? (
+          <p className="vendor-chart-empty">No recent activity.</p>
+        ) : (
+          <>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Activity</th>
+                    <th>Date & time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activityLog.map((a) => (
+                    <tr key={a.id}>
+                      <td>{a.description}</td>
+                      <td>{new Date(a.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {activityLogTotalPages > 1 && (
+              <div className="customers-pagination" style={{ marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setActivityLogPage((p) => Math.max(1, p - 1))}
+                  disabled={activityLogPage <= 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </button>
+                <span className="pagination-info">Page {activityLogPage} of {activityLogTotalPages}</span>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setActivityLogPage((p) => Math.min(activityLogTotalPages, p + 1))}
+                  disabled={activityLogPage >= activityLogTotalPages}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
 
       <h3 className="vendor-dashboard-section-title">Branch overview</h3>
       <div className="vendor-dashboard-charts-top">

@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getSettings, updateSettings } from '../api/settings';
-import { getServices, createService, updateService, deleteService } from '../api/services';
-import { getBranches } from '../api/branches';
 import { updatePassword } from '../api/auth.api';
 import { purgeAllCustomers } from '../api/customers';
 import { apiRequest } from '../api/client';
-import type { Service } from '../types/crm';
 
 export default function AdminSettings() {
   const [message, setMessage] = useState('');
@@ -41,26 +38,11 @@ export default function AdminSettings() {
   const [showBulkDeletePackagesToAdmin, setShowBulkDeletePackagesToAdmin] = useState<boolean>(false);
   const [showBulkDeleteMembershipsToAdmin, setShowBulkDeleteMembershipsToAdmin] = useState<boolean>(false);
   const [showBulkSettleSettlementsToAdmin, setShowBulkSettleSettlementsToAdmin] = useState<boolean>(false);
+  const [showPackageActionsToVendor, setShowPackageActionsToVendor] = useState<boolean>(false);
   const [passwordCurrent, setPasswordCurrent] = useState('');
   const [passwordNew, setPasswordNew] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
-
-  const [services, setServices] = useState<Service[]>([]);
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
-  const [servicesLoading, setServicesLoading] = useState(true);
-  const [serviceName, setServiceName] = useState('');
-  const [serviceCategory, setServiceCategory] = useState('');
-  const [serviceBranchId, setServiceBranchId] = useState('');
-  const [serviceDuration, setServiceDuration] = useState('');
-  const [servicePrice, setServicePrice] = useState('');
-  const [serviceSaving, setServiceSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editBranchId, setEditBranchId] = useState('');
-  const [editDuration, setEditDuration] = useState('');
-  const [editPrice, setEditPrice] = useState('');
 
   useEffect(() => {
     getSettings().then((r) => {
@@ -87,20 +69,10 @@ export default function AdminSettings() {
         setShowBulkDeletePackagesToAdmin(r.settings.showBulkDeletePackagesToAdmin === true);
         setShowBulkDeleteMembershipsToAdmin(r.settings.showBulkDeleteMembershipsToAdmin === true);
         setShowBulkSettleSettlementsToAdmin(r.settings.showBulkSettleSettlementsToAdmin === true);
+        setShowPackageActionsToVendor(r.settings.showPackageActionsToVendor === true);
       }
     });
   }, []);
-
-  const loadServices = () => {
-    setServicesLoading(true);
-    getServices().then((r) => {
-      setServicesLoading(false);
-      if (r.success && r.services) setServices(r.services);
-    });
-    getBranches().then((r) => { if (r.success && r.branches) setBranches(r.branches); });
-  };
-
-  useEffect(() => { loadServices(); }, []);
 
   const clearMessage = useCallback(() => {
     setMessage('');
@@ -112,122 +84,6 @@ export default function AdminSettings() {
     const t = setTimeout(clearMessage, 5000);
     return () => clearTimeout(t);
   }, [message, clearMessage]);
-
-  const handleAddService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!serviceName.trim()) {
-      setMessageType('error');
-      setMessage('Service name is required.');
-      return;
-    }
-    const durationNum = serviceDuration.trim() ? parseInt(serviceDuration, 10) : undefined;
-    const priceNum = servicePrice.trim() ? parseFloat(servicePrice) : undefined;
-    if (serviceDuration.trim() && (Number.isNaN(durationNum) || (durationNum != null && durationNum < 1))) {
-      setMessageType('error');
-      setMessage('Duration must be at least 1 minute.');
-      return;
-    }
-    if (servicePrice.trim() && (Number.isNaN(priceNum as number) || (priceNum != null && priceNum < 0))) {
-      setMessageType('error');
-      setMessage('Price must be 0 or greater.');
-      return;
-    }
-    setServiceSaving(true);
-    setMessage('');
-    setMessageType(null);
-    const r = await createService({
-      name: serviceName.trim(),
-      category: serviceCategory.trim() || undefined,
-      branchId: serviceBranchId || undefined,
-      durationMinutes: durationNum,
-      price: priceNum,
-    });
-    setServiceSaving(false);
-    if (r.success) {
-      setServiceName('');
-      setServiceCategory('');
-      setServiceBranchId('');
-      setServiceDuration('');
-      setServicePrice('');
-      loadServices();
-      setMessageType('success');
-      setMessage('Service added.');
-    } else {
-      setMessageType('error');
-      setMessage(r.message || 'Failed to add service.');
-    }
-  };
-
-  const startEdit = (s: Service) => {
-    setEditingId(s.id);
-    setEditName(s.name);
-    setEditCategory(s.category || '');
-    setEditBranchId(s.branchId || '');
-    setEditDuration(s.durationMinutes != null ? String(s.durationMinutes) : '');
-    setEditPrice(s.price != null ? String(s.price) : '');
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
-
-  const handleUpdateService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId || !editName.trim()) {
-      setMessageType('error');
-      setMessage('Name is required.');
-      return;
-    }
-    const durationNum = editDuration.trim() ? parseInt(editDuration, 10) : undefined;
-    const priceNum = editPrice.trim() ? parseFloat(editPrice) : undefined;
-    if (editDuration.trim() && (Number.isNaN(durationNum) || (durationNum != null && durationNum < 1))) {
-      setMessageType('error');
-      setMessage('Duration must be at least 1 minute.');
-      return;
-    }
-    if (editPrice.trim() && (Number.isNaN(priceNum as number) || (priceNum != null && priceNum < 0))) {
-      setMessageType('error');
-      setMessage('Price must be 0 or greater.');
-      return;
-    }
-    setServiceSaving(true);
-    setMessage('');
-    setMessageType(null);
-    const r = await updateService(editingId, {
-      name: editName.trim(),
-      category: editCategory.trim() || undefined,
-      branchId: editBranchId || undefined,
-      durationMinutes: durationNum,
-      price: priceNum,
-    });
-    setServiceSaving(false);
-    if (r.success) {
-      setEditingId(null);
-      loadServices();
-      setMessageType('success');
-      setMessage('Service updated.');
-    } else {
-      setMessageType('error');
-      setMessage(r.message || 'Failed to update service.');
-    }
-  };
-
-  const handleDeleteService = async (id: string) => {
-    if (!confirm('Remove this service? It will no longer appear in appointments or leads.')) return;
-    setServiceSaving(true);
-    setMessage('');
-    setMessageType(null);
-    const r = await deleteService(id);
-    setServiceSaving(false);
-    if (r.success) {
-      loadServices();
-      setMessageType('success');
-      setMessage('Service removed.');
-    } else {
-      setMessageType('error');
-      setMessage(r.message || 'Failed to remove service.');
-    }
-  };
 
   const handleSaveRevenuePercentage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,10 +243,11 @@ export default function AdminSettings() {
       showBulkDeletePackagesToAdmin,
       showBulkDeleteMembershipsToAdmin,
       showBulkSettleSettlementsToAdmin,
+      showPackageActionsToVendor,
     });
     setBulkDeleteTogglesSaving(false);
     setMessageType(r.success ? 'success' : 'error');
-    setMessage(r.success ? 'Bulk delete visibility saved.' : r.message || 'Failed to save.');
+    setMessage(r.success ? 'Bulk actions visibility saved.' : r.message || 'Failed to save.');
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -451,7 +308,7 @@ export default function AdminSettings() {
       <header className="page-hero settings-page-hero">
         <h1 className="page-hero-title">Settings</h1>
         <p className="page-hero-subtitle">
-          Manage system configuration, security, vendor experience, and services.
+          Manage system configuration, security, and vendor experience.
         </p>
       </header>
 
@@ -670,8 +527,8 @@ export default function AdminSettings() {
           </div>
 
           <div className="settings-block settings-block-divider">
-            <h3 className="settings-block-heading">Admin bulk actions</h3>
-            <p className="settings-block-desc">Show or hide bulk select + delete/settle controls on admin list pages.</p>
+            <h3 className="settings-block-heading">Admin bulk actions & package actions</h3>
+            <p className="settings-block-desc">Show or hide bulk select + delete/settle on admin list pages, and package action buttons (Edit, Activate, Inactive, Delete) for vendor/staff.</p>
             {settingsLoading ? (
               <p className="text-muted">Loading...</p>
             ) : (
@@ -682,9 +539,10 @@ export default function AdminSettings() {
                   <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeletePackagesToAdmin} onChange={(e) => setShowBulkDeletePackagesToAdmin(e.target.checked)} /><span>Packages – bulk delete</span></label>
                   <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteMembershipsToAdmin} onChange={(e) => setShowBulkDeleteMembershipsToAdmin(e.target.checked)} /><span>Memberships – bulk delete</span></label>
                   <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkSettleSettlementsToAdmin} onChange={(e) => setShowBulkSettleSettlementsToAdmin(e.target.checked)} /><span>Settlements – bulk mark settled</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showPackageActionsToVendor} onChange={(e) => setShowPackageActionsToVendor(e.target.checked)} /><span>Packages – show Edit, Activate, Inactive, Delete to vendor/staff</span></label>
                 </div>
                 <button type="submit" className="settings-btn settings-btn-primary" disabled={bulkDeleteTogglesSaving}>
-                  {bulkDeleteTogglesSaving ? 'Saving…' : 'Save bulk delete settings'}
+                  {bulkDeleteTogglesSaving ? 'Saving…' : 'Save bulk actions & package visibility'}
                 </button>
               </form>
             )}
@@ -815,96 +673,6 @@ export default function AdminSettings() {
               </div>
             )}
           </div>
-        </section>
-
-        {/* Services */}
-        <section className="content-card settings-card">
-          <h2 className="settings-card-title">Services</h2>
-          <p className="settings-block-desc" style={{ marginBottom: '1rem' }}>
-            Add services for appointments and leads. Leave branch blank for all branches.
-          </p>
-          <form onSubmit={handleAddService} className="settings-form settings-form-row">
-            <label className="settings-label settings-label-flex">
-              <span>Name *</span>
-              <input type="text" value={serviceName} onChange={(e) => setServiceName(e.target.value)} placeholder="e.g. Eyebrow threading" className="settings-input" />
-            </label>
-            <label className="settings-label settings-label-flex">
-              <span>Category</span>
-              <input type="text" value={serviceCategory} onChange={(e) => setServiceCategory(e.target.value)} placeholder="Optional" className="settings-input" />
-            </label>
-            <label className="settings-label settings-label-flex">
-              <span>Branch</span>
-              <select value={serviceBranchId} onChange={(e) => setServiceBranchId(e.target.value)} className="settings-input">
-                <option value="">All branches</option>
-                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </label>
-            <label className="settings-label settings-label-flex">
-              <span>Duration (min)</span>
-              <input type="number" min={1} value={serviceDuration} onChange={(e) => setServiceDuration(e.target.value)} placeholder="—" className="settings-input settings-input-narrow" />
-            </label>
-            <label className="settings-label settings-label-flex">
-              <span>Price ($)</span>
-              <input type="number" min={0} step={0.01} value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} placeholder="—" className="settings-input settings-input-narrow" />
-            </label>
-            <button type="submit" className="settings-btn settings-btn-primary" disabled={serviceSaving}>
-              {serviceSaving ? 'Adding…' : 'Add service'}
-            </button>
-          </form>
-          {servicesLoading ? (
-            <p className="text-muted settings-services-loading">Loading services…</p>
-          ) : services.length === 0 ? (
-            <p className="text-muted settings-services-empty">No services yet. Add one above.</p>
-          ) : (
-            <div className="settings-table-wrap">
-              <table className="data-table settings-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Branch</th>
-                    <th>Duration</th>
-                    <th>Price</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((s) => (
-                    <tr key={s.id}>
-                      {editingId === s.id ? (
-                        <td colSpan={6}>
-                          <form onSubmit={handleUpdateService} className="settings-inline-form">
-                            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" required className="settings-input settings-input-sm" />
-                            <input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} placeholder="Category" className="settings-input settings-input-sm" />
-                            <select value={editBranchId} onChange={(e) => setEditBranchId(e.target.value)} className="settings-input settings-input-sm">
-                              <option value="">All branches</option>
-                              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
-                            <input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(e.target.value)} placeholder="Min" className="settings-input settings-input-sm" />
-                            <input type="number" min={0} step={0.01} value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder="Price" className="settings-input settings-input-sm" />
-                            <button type="submit" className="settings-btn settings-btn-sm" disabled={serviceSaving}>Save</button>
-                            <button type="button" className="settings-btn settings-btn-sm settings-btn-secondary" onClick={cancelEdit}>Cancel</button>
-                          </form>
-                        </td>
-                      ) : (
-                        <>
-                          <td>{s.name}</td>
-                          <td>{s.category || '—'}</td>
-                          <td>{s.branch || 'All'}</td>
-                          <td>{s.durationMinutes != null ? `${s.durationMinutes} min` : '—'}</td>
-                          <td>{s.price != null ? `$${s.price}` : '—'}</td>
-                          <td>
-                            <button type="button" className="settings-btn settings-btn-sm settings-btn-secondary" onClick={() => startEdit(s)}>Edit</button>
-                            <button type="button" className="settings-btn settings-btn-sm settings-btn-danger" onClick={() => handleDeleteService(s.id)}>Remove</button>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </section>
       </div>
     </div>

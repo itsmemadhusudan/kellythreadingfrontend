@@ -41,6 +41,8 @@ export interface SystemSettings {
   showBulkDeleteMembershipsToAdmin?: boolean;
   /** When true, Admin sees bulk settle controls on Settlements page. */
   showBulkSettleSettlementsToAdmin?: boolean;
+  /** When true, Vendor/Staff see Edit, Activate, Inactive, Delete on Packages page. */
+  showPackageActionsToVendor?: boolean;
 }
 
 export async function getSettings(): Promise<{
@@ -79,6 +81,7 @@ export async function updateSettings(data: {
   showBulkDeletePackagesToAdmin?: boolean;
   showBulkDeleteMembershipsToAdmin?: boolean;
   showBulkSettleSettlementsToAdmin?: boolean;
+  showPackageActionsToVendor?: boolean;
 }): Promise<{
   success: boolean;
   settings?: SystemSettings;

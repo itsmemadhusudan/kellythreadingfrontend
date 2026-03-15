@@ -24,6 +24,7 @@ export const ROUTES = {
     leads: '/admin/leads',
     leadDetail: (id: string) => `/admin/leads/${id}`,
     appointments: '/admin/appointments',
+    services: '/admin/services',
     settlements: '/admin/settlements',
     loyalty: '/admin/loyalty',
     loyaltyDetail: (customerId: string) => `/admin/loyalty/${customerId}`,
@@ -32,6 +33,7 @@ export const ROUTES = {
     profile: '/admin/profile',
     tickets: '/admin/tickets',
     ticketDetail: (id: string) => `/admin/tickets/${id}`,
+    activityLog: '/admin/activity-log',
   },
   vendor: {
     root: '/vendor',
@@ -48,6 +50,7 @@ export const ROUTES = {
     leads: '/vendor/leads',
     leadDetail: (id: string) => `/vendor/leads/${id}`,
     appointments: '/vendor/appointments',
+    services: '/vendor/services',
     settlements: '/vendor/settlements',
     loyalty: '/vendor/loyalty',
     loyaltyDetail: (customerId: string) => `/vendor/loyalty/${customerId}`,
@@ -55,5 +58,6 @@ export const ROUTES = {
     profile: '/vendor/profile',
     tickets: '/vendor/tickets',
     ticketDetail: (id: string) => `/vendor/tickets/${id}`,
+    activityLog: '/vendor/activity-log',
   },
 } as const;

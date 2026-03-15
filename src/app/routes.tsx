@@ -37,6 +37,7 @@ const AdminSearchPage = lazy(() => import('../pages/admin/SearchPage').then((m) 
 const AdminLeadsPage = lazy(() => import('../pages/admin/LeadsPage').then((m) => ({ default: m.default })));
 const AdminLeadDetailPage = lazy(() => import('../pages/admin/LeadDetailPage').then((m) => ({ default: m.default })));
 const AdminAppointmentsPage = lazy(() => import('../pages/admin/AppointmentsPage').then((m) => ({ default: m.default })));
+const AdminServicesPage = lazy(() => import('../pages/admin/ServicesPage').then((m) => ({ default: m.default })));
 const AdminSettlementsPage = lazy(() => import('../pages/admin/SettlementsPage').then((m) => ({ default: m.default })));
 const AdminLoyaltyPage = lazy(() => import('../pages/admin/LoyaltyPage').then((m) => ({ default: m.default })));
 const AdminLoyaltyDetailPage = lazy(() => import('../pages/admin/LoyaltyDetailPage').then((m) => ({ default: m.default })));
@@ -44,6 +45,7 @@ const AdminSettingsPage = lazy(() => import('../pages/admin/SettingsPage').then(
 const AdminProfilePage = lazy(() => import('../pages/admin/ProfilePage').then((m) => ({ default: m.default })));
 const AdminTicketsPage = lazy(() => import('../pages/admin/TicketsPage').then((m) => ({ default: m.default })));
 const AdminTicketDetailPage = lazy(() => import('../pages/admin/TicketDetailPage').then((m) => ({ default: m.default })));
+const AdminActivityLogPage = lazy(() => import('../features/activityLog/pages/ActivityLogPage').then((m) => ({ default: m.default })));
 const LazyGuidelinesPage = lazy(() => import('../pages/GuidelinesPage').then((m) => ({ default: m.default })));
 
 // Vendor pages – lazy loaded
@@ -59,12 +61,14 @@ const VendorSearchPage = lazy(() => import('../pages/vendor/SearchPage').then((m
 const VendorLeadsPage = lazy(() => import('../pages/vendor/LeadsPage').then((m) => ({ default: m.default })));
 const VendorLeadDetailPage = lazy(() => import('../pages/vendor/LeadDetailPage').then((m) => ({ default: m.default })));
 const VendorAppointmentsPage = lazy(() => import('../pages/vendor/AppointmentsPage').then((m) => ({ default: m.default })));
+const VendorServicesPage = lazy(() => import('../pages/vendor/ServicesPage').then((m) => ({ default: m.default })));
 const VendorSettlementsPage = lazy(() => import('../pages/vendor/SettlementsPage').then((m) => ({ default: m.default })));
 const VendorLoyaltyPage = lazy(() => import('../pages/vendor/LoyaltyPage').then((m) => ({ default: m.default })));
 const VendorLoyaltyDetailPage = lazy(() => import('../pages/vendor/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const VendorProfilePage = lazy(() => import('../pages/vendor/VendorProfilePage').then((m) => ({ default: m.default })));
 const VendorTicketsPage = lazy(() => import('../pages/vendor/TicketsPage').then((m) => ({ default: m.default })));
 const VendorTicketDetailPage = lazy(() => import('../pages/vendor/TicketDetailPage').then((m) => ({ default: m.default })));
+const VendorActivityLogPage = lazy(() => import('../features/activityLog/pages/ActivityLogPage').then((m) => ({ default: m.default })));
 
 export function AppRoutes() {
   return (
@@ -106,6 +110,7 @@ export function AppRoutes() {
           <Route path="leads" element={<AdminLeadsPage />} />
           <Route path="leads/:id" element={<AdminLeadDetailPage />} />
           <Route path="appointments" element={<AdminAppointmentsPage />} />
+          <Route path="services" element={<AdminServicesPage />} />
           <Route path="settlements" element={<AdminSettlementsPage />} />
           <Route path="loyalty" element={<AdminLoyaltyPage />} />
           <Route path="loyalty/:id" element={<AdminLoyaltyDetailPage />} />
@@ -114,6 +119,7 @@ export function AppRoutes() {
           <Route path="profile" element={<AdminProfilePage />} />
           <Route path="tickets" element={<AdminTicketsPage />} />
           <Route path="tickets/:id" element={<AdminTicketDetailPage />} />
+          <Route path="activity-log" element={<AdminActivityLogPage />} />
         </Route>
 
         {/* Vendor routes */}
@@ -141,6 +147,7 @@ export function AppRoutes() {
             <Route path="leads" element={<VendorLeadsPage />} />
             <Route path="leads/:id" element={<VendorLeadDetailPage />} />
             <Route path="appointments" element={<VendorAppointmentsPage />} />
+            <Route path="services" element={<VendorServicesPage />} />
             <Route path="settlements" element={<VendorSettlementsPage />} />
             <Route path="loyalty" element={<VendorLoyaltyPage />} />
             <Route path="loyalty/:id" element={<VendorLoyaltyDetailPage />} />
@@ -148,6 +155,7 @@ export function AppRoutes() {
             <Route path="guidelines" element={<LazyGuidelinesPage />} />
             <Route path="tickets" element={<VendorTicketsPage />} />
             <Route path="tickets/:id" element={<VendorTicketDetailPage />} />
+            <Route path="activity-log" element={<VendorActivityLogPage />} />
           </Route>
         </Route>
 
