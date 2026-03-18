@@ -12,6 +12,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -53,7 +54,8 @@ export default function CustomersPage() {
       const p = opts?.page ?? page;
       const s = opts?.search ?? searchQuery;
       const b = opts?.branchId ?? branchFilterId;
-      setLoading(true);
+      if (customers.length === 0) setLoading(true);
+      else setRefreshing(true);
       setError('');
       getCustomersPaged({
         page: p,
@@ -62,6 +64,7 @@ export default function CustomersPage() {
         branchId: isAdmin && b ? b : undefined,
       }).then((r) => {
         setLoading(false);
+        setRefreshing(false);
         if (r.success && r.customers) {
           setCustomers(r.customers);
           setCustomersTotal(r.total ?? r.customers.length);
@@ -69,7 +72,7 @@ export default function CustomersPage() {
         } else setError(r.message || 'Failed to load');
       });
     },
-    [PAGE_SIZE, branchFilterId, isAdmin, page, searchQuery]
+    [PAGE_SIZE, branchFilterId, isAdmin, page, searchQuery, customers.length]
   );
 
   useEffect(() => {
@@ -277,7 +280,7 @@ export default function CustomersPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (loading) {
+  if (loading && customers.length === 0) {
     return (
       <div className="dashboard-content">
         <div className="vendors-loading"><div className="spinner" /><span>Loading customers...</span></div>
@@ -289,7 +292,10 @@ export default function CustomersPage() {
     <div className="dashboard-content customers-page">
       <header className="page-hero">
         <h1 className="page-hero-title">Customers</h1>
-        <p className="page-hero-subtitle">Customer list. Add customers here; assign package and membership from the Memberships page.</p>
+        <p className="page-hero-subtitle">
+          Customer list. Add customers here; assign package and membership from the Memberships page.
+          {refreshing ? ' (Loading…)' : ''}
+        </p>
       </header>
       <section className="content-card">
         <div className="customers-top-actions">
