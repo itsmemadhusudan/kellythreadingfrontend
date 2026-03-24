@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getServices, createService, updateService, deleteService } from '../../api/services';
+import { getSettings } from '../../api/settings';
 import { useBranch } from '../../hooks/useBranch';
 import type { Service } from '../../types/crm';
 
@@ -20,6 +21,7 @@ export default function VendorServicesPage() {
   const [editCategory, setEditCategory] = useState('');
   const [editDuration, setEditDuration] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [showServiceActionsToVendor, setShowServiceActionsToVendor] = useState(false);
 
   const loadServices = () => {
     setLoading(true);
@@ -33,6 +35,14 @@ export default function VendorServicesPage() {
 
   useEffect(() => {
     loadServices();
+  }, []);
+
+  useEffect(() => {
+    getSettings().then((r) => {
+      if (r.success && r.settings && typeof r.settings.showServiceActionsToVendor === 'boolean') {
+        setShowServiceActionsToVendor(r.settings.showServiceActionsToVendor === true);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -172,7 +182,7 @@ export default function VendorServicesPage() {
           </div>
         )}
 
-        {userBranchId && (
+        {userBranchId && showServiceActionsToVendor && (
           <form onSubmit={handleAddService} className="settings-form settings-form-row" style={{ marginBottom: '1.5rem' }}>
             <label className="settings-label settings-label-flex">
               <span>Name *</span>
@@ -223,7 +233,7 @@ export default function VendorServicesPage() {
               <tbody>
                 {services.map((s) => (
                   <tr key={s.id}>
-                    {editingId === s.id && canEditService(s) ? (
+                  {editingId === s.id && showServiceActionsToVendor && canEditService(s) ? (
                       <td colSpan={userBranchId ? 6 : 5}>
                         <form onSubmit={handleUpdateService} className="settings-inline-form">
                           <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Name" required className="settings-input settings-input-sm" />
@@ -243,7 +253,7 @@ export default function VendorServicesPage() {
                         <td>{s.price != null ? `$${s.price}` : '—'}</td>
                         {userBranchId && (
                           <td>
-                            {canEditService(s) ? (
+                            {showServiceActionsToVendor && canEditService(s) ? (
                               <>
                                 <button type="button" className="settings-btn settings-btn-sm settings-btn-secondary" onClick={() => startEdit(s)}>Edit</button>
                                 <button type="button" className="settings-btn settings-btn-sm settings-btn-danger" onClick={() => handleDeleteService(s.id)}>Remove</button>

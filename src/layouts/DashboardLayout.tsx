@@ -40,6 +40,7 @@ const ownerNav: NavItem[] = [
   { to: ROUTES.admin.tickets, label: 'Tickets', icon: '🎫', section: 'Account & system' },
   { to: ROUTES.admin.activityLog, label: 'Activity log', icon: '📋', section: 'Account & system' },
   { to: ROUTES.admin.guidelines, label: 'Guidelines', icon: '📄', section: 'Account & system' },
+  { to: ROUTES.admin.rolesPermissions, label: 'Roles & permissions', icon: '🛡️', section: 'Account & system' },
   { to: ROUTES.admin.settings, label: 'Settings', icon: '⚙️', section: 'Account & system' },
 ];
 

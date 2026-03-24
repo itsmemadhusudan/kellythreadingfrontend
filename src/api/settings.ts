@@ -43,6 +43,10 @@ export interface SystemSettings {
   showBulkSettleSettlementsToAdmin?: boolean;
   /** When true, Vendor/Staff see Edit, Activate, Inactive, Delete on Packages page. */
   showPackageActionsToVendor?: boolean;
+  /** When true, Vendor/Staff can see and use edit/delete actions across dashboard pages. */
+  showEditDeleteActionsToVendor?: boolean;
+  /** When true, Vendor/Staff can add, edit, and delete services. */
+  showServiceActionsToVendor?: boolean;
 }
 
 export async function getSettings(): Promise<{
@@ -82,6 +86,8 @@ export async function updateSettings(data: {
   showBulkDeleteMembershipsToAdmin?: boolean;
   showBulkSettleSettlementsToAdmin?: boolean;
   showPackageActionsToVendor?: boolean;
+  showEditDeleteActionsToVendor?: boolean;
+  showServiceActionsToVendor?: boolean;
 }): Promise<{
   success: boolean;
   settings?: SystemSettings;

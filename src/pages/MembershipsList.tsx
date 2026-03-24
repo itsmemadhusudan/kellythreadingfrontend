@@ -46,6 +46,7 @@ export default function MembershipsList() {
   const [sessionsImportResult, setSessionsImportResult] = useState<{ ok: number; fail: number; skipped: number; missingMembershipIds?: Set<string>; missingBranchIds?: Set<string> } | null>(null);
   const [showImportButton, setShowImportButton] = useState(true);
   const [showBulkDeleteMembershipsToAdmin, setShowBulkDeleteMembershipsToAdmin] = useState(false);
+  const [showEditDeleteActionsToVendor, setShowEditDeleteActionsToVendor] = useState(false);
   const [selectedMembershipIds, setSelectedMembershipIds] = useState<Set<string>>(() => new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteMessage, setBulkDeleteMessage] = useState('');
@@ -117,10 +118,14 @@ export default function MembershipsList() {
       if (r.success && r.settings && typeof (r.settings as { showBulkDeleteMembershipsToAdmin?: boolean }).showBulkDeleteMembershipsToAdmin === 'boolean') {
         setShowBulkDeleteMembershipsToAdmin((r.settings as { showBulkDeleteMembershipsToAdmin: boolean }).showBulkDeleteMembershipsToAdmin);
       }
+      if (r.success && r.settings && typeof (r.settings as { showEditDeleteActionsToVendor?: boolean }).showEditDeleteActionsToVendor === 'boolean') {
+        setShowEditDeleteActionsToVendor((r.settings as { showEditDeleteActionsToVendor: boolean }).showEditDeleteActionsToVendor);
+      }
     });
   }, []);
 
   const canBulkDelete = isAdmin && showBulkDeleteMembershipsToAdmin;
+  const canEditDeleteMembership = isAdmin || (!!user && user.role === 'vendor' && showEditDeleteActionsToVendor);
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedMembershipIds((prev) => {
@@ -1354,15 +1359,17 @@ export default function MembershipsList() {
                       </div>
                     </div>
                     <div className="membership-mobile-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="filter-btn"
-                        onClick={() => navigate(`${basePath}/memberships/${m.id}`)}
-                        title="View / Edit"
-                      >
-                        Edit
-                      </button>
-                      {isAdmin && (
+                      {canEditDeleteMembership && (
+                        <button
+                          type="button"
+                          className="filter-btn"
+                          onClick={() => navigate(`${basePath}/memberships/${m.id}`)}
+                          title="View / Edit"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {canEditDeleteMembership && (
                         <button
                           type="button"
                           className="btn-reject"
@@ -1419,15 +1426,17 @@ export default function MembershipsList() {
                     <td>{m.soldAtBranch || '—'}</td>
                     <td><span className={`status-badge status-${m.status === 'active' ? 'approved' : m.status === 'used' ? 'rejected' : 'pending'}`}>{m.status}</span></td>
                     <td className="memberships-actions-cell" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="filter-btn"
-                        onClick={() => navigate(`${basePath}/memberships/${m.id}`)}
-                        title="View / Edit"
-                      >
-                        Edit
-                      </button>
-                      {isAdmin && (
+                      {canEditDeleteMembership && (
+                        <button
+                          type="button"
+                          className="filter-btn"
+                          onClick={() => navigate(`${basePath}/memberships/${m.id}`)}
+                          title="View / Edit"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {canEditDeleteMembership && (
                         <button
                           type="button"
                           className="btn-reject"

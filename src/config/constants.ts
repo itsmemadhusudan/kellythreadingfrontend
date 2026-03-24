@@ -30,6 +30,7 @@ export const ROUTES = {
     loyaltyDetail: (customerId: string) => `/admin/loyalty/${customerId}`,
     guidelines: '/admin/guidelines',
     settings: '/admin/settings',
+    rolesPermissions: '/admin/roles-permissions',
     profile: '/admin/profile',
     tickets: '/admin/tickets',
     ticketDetail: (id: string) => `/admin/tickets/${id}`,

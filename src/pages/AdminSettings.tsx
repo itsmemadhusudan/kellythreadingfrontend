@@ -5,7 +5,9 @@ import { updatePassword } from '../api/auth.api';
 import { purgeAllCustomers } from '../api/customers';
 import { apiRequest } from '../api/client';
 
-export default function AdminSettings() {
+type AdminSettingsMode = 'full' | 'general' | 'roles';
+
+export default function AdminSettings({ mode = 'full' }: { mode?: AdminSettingsMode }) {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
   const [revenuePercentage, setRevenuePercentage] = useState('');
@@ -39,6 +41,8 @@ export default function AdminSettings() {
   const [showBulkDeleteMembershipsToAdmin, setShowBulkDeleteMembershipsToAdmin] = useState<boolean>(false);
   const [showBulkSettleSettlementsToAdmin, setShowBulkSettleSettlementsToAdmin] = useState<boolean>(false);
   const [showPackageActionsToVendor, setShowPackageActionsToVendor] = useState<boolean>(false);
+  const [showEditDeleteActionsToVendor, setShowEditDeleteActionsToVendor] = useState<boolean>(false);
+  const [showServiceActionsToVendor, setShowServiceActionsToVendor] = useState<boolean>(false);
   const [passwordCurrent, setPasswordCurrent] = useState('');
   const [passwordNew, setPasswordNew] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -88,6 +92,8 @@ export default function AdminSettings() {
         setShowBulkDeleteMembershipsToAdmin(r.settings.showBulkDeleteMembershipsToAdmin === true);
         setShowBulkSettleSettlementsToAdmin(r.settings.showBulkSettleSettlementsToAdmin === true);
         setShowPackageActionsToVendor(r.settings.showPackageActionsToVendor === true);
+        setShowEditDeleteActionsToVendor(r.settings.showEditDeleteActionsToVendor === true);
+        setShowServiceActionsToVendor(r.settings.showServiceActionsToVendor === true);
       }
     });
   }, []);
@@ -262,6 +268,8 @@ export default function AdminSettings() {
       showBulkDeleteMembershipsToAdmin,
       showBulkSettleSettlementsToAdmin,
       showPackageActionsToVendor,
+      showEditDeleteActionsToVendor,
+      showServiceActionsToVendor,
     });
     setBulkDeleteTogglesSaving(false);
     setMessageType(r.success ? 'success' : 'error');
@@ -520,7 +528,7 @@ export default function AdminSettings() {
       </header>
 
       <div className="settings-layout">
-        {/* Account & Security */}
+        {(mode === 'full' || mode === 'general') && (
         <section className="content-card settings-card">
           <h2 className="settings-card-title">Account &amp; security</h2>
           <div className="settings-block">
@@ -573,8 +581,9 @@ export default function AdminSettings() {
             </form>
           </div>
         </section>
+        )}
 
-        {/* Business rules – one card, two blocks in grid */}
+        {(mode === 'full' || mode === 'general') && (
         <section className="content-card settings-card">
           <h2 className="settings-card-title">Business rules</h2>
           <div className="settings-grid-2">
@@ -608,8 +617,9 @@ export default function AdminSettings() {
             </div>
           </div>
         </section>
+        )}
 
-        {/* Vendor experience – one card, three blocks */}
+        {(mode === 'full' || mode === 'roles') && (
         <section className="content-card settings-card">
           <h2 className="settings-card-title">Vendor experience</h2>
 
@@ -734,22 +744,32 @@ export default function AdminSettings() {
           </div>
 
           <div className="settings-block settings-block-divider">
-            <h3 className="settings-block-heading">Admin bulk actions & package actions</h3>
-            <p className="settings-block-desc">Show or hide bulk select + delete/settle on admin list pages, and package action buttons (Edit, Activate, Inactive, Delete) for vendor/staff.</p>
+            <h3 className="settings-block-heading">Action access controls</h3>
+            <p className="settings-block-desc">Control who can see and use edit, delete, and bulk action buttons across the dashboard.</p>
             {settingsLoading ? (
               <p className="text-muted">Loading...</p>
             ) : (
               <form onSubmit={handleSaveBulkDeleteToggles} className="settings-form">
                 <div className="settings-checkbox-group">
-                  <span className="settings-checkbox-legend">Pages</span>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteBranchesToAdmin} onChange={(e) => setShowBulkDeleteBranchesToAdmin(e.target.checked)} /><span>Branches – bulk delete</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeletePackagesToAdmin} onChange={(e) => setShowBulkDeletePackagesToAdmin(e.target.checked)} /><span>Packages – bulk delete</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteMembershipsToAdmin} onChange={(e) => setShowBulkDeleteMembershipsToAdmin(e.target.checked)} /><span>Memberships – bulk delete</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkSettleSettlementsToAdmin} onChange={(e) => setShowBulkSettleSettlementsToAdmin(e.target.checked)} /><span>Settlements – bulk mark settled</span></label>
-                  <label className="settings-checkbox-label"><input type="checkbox" checked={showPackageActionsToVendor} onChange={(e) => setShowPackageActionsToVendor(e.target.checked)} /><span>Packages – show Edit, Activate, Inactive, Delete to vendor/staff</span></label>
+                  <span className="settings-checkbox-legend">Section 1: Admin-only bulk action buttons</span>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteBranchesToAdmin} onChange={(e) => setShowBulkDeleteBranchesToAdmin(e.target.checked)} /><span>Branches - show "Bulk Delete" button to admin</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeletePackagesToAdmin} onChange={(e) => setShowBulkDeletePackagesToAdmin(e.target.checked)} /><span>Packages - show "Bulk Delete" button to admin</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkDeleteMembershipsToAdmin} onChange={(e) => setShowBulkDeleteMembershipsToAdmin(e.target.checked)} /><span>Memberships - show "Bulk Delete" button to admin</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showBulkSettleSettlementsToAdmin} onChange={(e) => setShowBulkSettleSettlementsToAdmin(e.target.checked)} /><span>Settlements - show "Bulk Mark Settled" button to admin</span></label>
+                </div>
+
+                <div className="settings-checkbox-group">
+                  <span className="settings-checkbox-legend">Section 2: Package action buttons for vendor/staff</span>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showPackageActionsToVendor} onChange={(e) => setShowPackageActionsToVendor(e.target.checked)} /><span>Packages - allow vendor/staff to see Edit, Activate, Inactive, and Delete buttons</span></label>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showServiceActionsToVendor} onChange={(e) => setShowServiceActionsToVendor(e.target.checked)} /><span>Services - allow vendor/staff to Add, Edit, and Delete services</span></label>
+                </div>
+
+                <div className="settings-checkbox-group">
+                  <span className="settings-checkbox-legend">Section 3: Global Edit/Delete permission for vendor/staff</span>
+                  <label className="settings-checkbox-label"><input type="checkbox" checked={showEditDeleteActionsToVendor} onChange={(e) => setShowEditDeleteActionsToVendor(e.target.checked)} /><span>Allow vendor/staff to use Edit and Delete actions across all supported modules</span></label>
                 </div>
                 <button type="submit" className="settings-btn settings-btn-primary" disabled={bulkDeleteTogglesSaving}>
-                  {bulkDeleteTogglesSaving ? 'Saving…' : 'Save bulk actions & package visibility'}
+                  {bulkDeleteTogglesSaving ? 'Saving…' : 'Save roles & permissions'}
                 </button>
               </form>
             )}
@@ -949,6 +969,7 @@ export default function AdminSettings() {
             )}
           </div>
         </section>
+        )}
       </div>
     </div>
   );

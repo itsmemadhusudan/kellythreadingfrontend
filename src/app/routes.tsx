@@ -42,6 +42,7 @@ const AdminSettlementsPage = lazy(() => import('../pages/admin/SettlementsPage')
 const AdminLoyaltyPage = lazy(() => import('../pages/admin/LoyaltyPage').then((m) => ({ default: m.default })));
 const AdminLoyaltyDetailPage = lazy(() => import('../pages/admin/LoyaltyDetailPage').then((m) => ({ default: m.default })));
 const AdminSettingsPage = lazy(() => import('../pages/admin/SettingsPage').then((m) => ({ default: m.default })));
+const AdminRolesPermissionsPage = lazy(() => import('../pages/admin/RolesPermissionsPage').then((m) => ({ default: m.default })));
 const AdminProfilePage = lazy(() => import('../pages/admin/ProfilePage').then((m) => ({ default: m.default })));
 const AdminTicketsPage = lazy(() => import('../pages/admin/TicketsPage').then((m) => ({ default: m.default })));
 const AdminTicketDetailPage = lazy(() => import('../pages/admin/TicketDetailPage').then((m) => ({ default: m.default })));
@@ -116,6 +117,7 @@ export function AppRoutes() {
           <Route path="loyalty/:id" element={<AdminLoyaltyDetailPage />} />
           <Route path="guidelines" element={<LazyGuidelinesPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="roles-permissions" element={<AdminRolesPermissionsPage />} />
           <Route path="profile" element={<AdminProfilePage />} />
           <Route path="tickets" element={<AdminTicketsPage />} />
           <Route path="tickets/:id" element={<AdminTicketDetailPage />} />
